@@ -4,20 +4,20 @@
 \BOOKMARK [2][-]{subsection.2.2}{2.2 分类}{section.2}% 4
 \BOOKMARK [3][-]{subsubsection.2.2.1}{2.2.1 生成模型}{subsection.2.2}% 5
 \BOOKMARK [3][-]{subsubsection.2.2.2}{2.2.2 判别模型}{subsection.2.2}% 6
-\BOOKMARK [2][-]{subsection.2.3}{2.3\040Tracking}{section.2}% 7
-\BOOKMARK [1][-]{section.3}{3\040Benchmark\040Data\040Set}{}% 8
-\BOOKMARK [1][-]{section.4}{4\040Selected\040Pedestrian\040Detection\040Approaches}{}% 9
-\BOOKMARK [2][-]{subsection.4.1}{4.1\040Haar\040Wavelet-Based\040Cascade}{section.4}% 10
-\BOOKMARK [2][-]{subsection.4.2}{4.2\040Neural\040Network\040Using\040Local\040Receptive\040Fields\(NN/LRF\)}{section.4}% 11
-\BOOKMARK [2][-]{subsection.4.3}{4.3\040Histograms\040of\040Oriented\040Gradients\040with\040Linear\040SVM\(HOG/linSVM\)}{section.4}% 12
-\BOOKMARK [2][-]{subsection.4.4}{4.4\040Combined\040Shape-Texture-Based\040Pedestrian\040Detection}{section.4}% 13
-\BOOKMARK [2][-]{subsection.4.5}{4.5\040Temporal\040Integration-Tracking}{section.4}% 14
-\BOOKMARK [1][-]{section.5}{5\040Experiments}{}% 15
-\BOOKMARK [2][-]{subsection.5.1}{5.1\040Methodology}{section.5}% 16
-\BOOKMARK [2][-]{subsection.5.2}{5.2\040Generic\040Pedestrian\040Detection}{section.5}% 17
-\BOOKMARK [2][-]{subsection.5.3}{5.3\040Onboard\040Vehicle\040Application}{section.5}% 18
-\BOOKMARK [1][-]{section.6}{6\040Discussion}{}% 19
-\BOOKMARK [1][-]{section.7}{7\040Conclusion}{}% 20
+\BOOKMARK [2][-]{subsection.2.3}{2.3 跟踪}{section.2}% 7
+\BOOKMARK [1][-]{section.3}{3 基准测试数据集}{}% 8
+\BOOKMARK [1][-]{section.4}{4 选择的行人检测方法}{}% 9
+\BOOKMARK [2][-]{subsection.4.1}{4.1 基于Haar小波的级联器}{section.4}% 10
+\BOOKMARK [2][-]{subsection.4.2}{4.2 采用局部感知域特征的神经网络\(NN/LRF\)}{section.4}% 11
+\BOOKMARK [2][-]{subsection.4.3}{4.3 方向梯度直方图特征和线性SVM的组合\(HOG/linSVM\)}{section.4}% 12
+\BOOKMARK [2][-]{subsection.4.4}{4.4 联合形状-纹理行人检测}{section.4}% 13
+\BOOKMARK [2][-]{subsection.4.5}{4.5 时域整合-跟踪}{section.4}% 14
+\BOOKMARK [1][-]{section.5}{5 实验}{}% 15
+\BOOKMARK [2][-]{subsection.5.1}{5.1 方法学}{section.5}% 16
+\BOOKMARK [2][-]{subsection.5.2}{5.2 一般行人检测}{section.5}% 17
+\BOOKMARK [2][-]{subsection.5.3}{5.3 车载应用场景}{section.5}% 18
+\BOOKMARK [1][-]{section.6}{6 讨论}{}% 19
+\BOOKMARK [1][-]{section.7}{7 结论}{}% 20
 \BOOKMARK [1][-]{section*.2}{References}{}% 21
 \BOOKMARK [1][-]{IEEEbiography.0}{Biographies}{}% 22
 \BOOKMARK [2][-]{IEEEbiography.1}{Markus\040Enzweiler}{IEEEbiography.0}% 23
