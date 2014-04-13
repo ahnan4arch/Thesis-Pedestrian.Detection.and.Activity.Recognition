@@ -1,0 +1,260 @@
+%========================================================================
+%   FileName: monocularpedestrian.tex
+%     Author: GuanHWang
+%      Email: GuanHWang2011@gmail.com
+% LastChange: 2014-02-28 14:04:48
+%========================================================================
+\documentclass[10pt,technote]{IEEEtran}
+\usepackage[CJKchecksingle,CJKnumber]{xeCJK}
+\setCJKmainfont[BoldFont={SimHei},
+ItalicFont={KaiTi}]{SimSun}
+\renewcommand\baselinestretch{1.2}
+\usepackage{graphicx}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{listings}
+\lstset{numbers=left,numbersep=4pt,
+frame=lines,framerule=1pt,basicstyle=\ttfamily\scriptsize,
+}
+\usepackage[bookmarksnumbered, pdfencoding=auto, 
+breaklinks, colorlinks, linkcolor=red, urlcolor=ForestGreen, citecolor=magenta]{hyperref}
+\usepackage{cite}
+\usepackage{stfloats}
+\usepackage{amssymb}
+\punctstyle{plain}
+\begin{document}
+%\begin{CJK}{UTF8}{hei}
+\title{人体检测及行为分析的研究\\技术笔记}
+\author{王官皓}
+
+%Headers
+\markboth{人体检测及行为分析的研究.~TechNotes.~2014}%
+{王官皓.~电子科技大学}
+
+%Abstract
+\IEEEtitleabstractindextext{%
+\begin{abstract}
+人体检测及行为分析的研究中涉及到的技术细节以及毕业设计的诸多细节.
+\end{abstract}
+
+%Keywords
+\begin{IEEEkeywords}
+行人检测,行为分析,技术笔记.
+\end{IEEEkeywords}}
+
+\maketitle
+\IEEEdisplaynontitleabstractindextext
+\section{级联器训练(Cascade Classifier Training)}
+本节记录综述\cite{bib1}中的Haar级联器用Opencv运算库进行实现的细节,
+主要涉及到训练数据的准备(样本的生成),训练,分类的实现.
+参考了\cite{bib2},\cite{bib3},\cite{bib4},\cite{bib5}等资料.
+
+OpenCV提供了两种训练方法:\textcolor{teal}{opencv\_haartraining}和
+\textcolor{teal}{opencv\_traincascade}.后者是较新的版本,在OpenCV 2.x
+API框架下采用C++实现,故采用后者.\textcolor{teal}{opencv\_traincascade}
+可以采用TBB库进行多线程运算,需要用TBB编译的OpenCV库.训练之前可用
+\textcolor{teal}{opencv\_createsamples}来生成阳性样本和训练样本,输出
+格式为\textit{*.vec}格式,是包含图像数据的二进制格式.
+\subsection{训练数据准备}
+训练样本有两种类型:阴性样本和阳性样本.阴性样本没有包含目标对象,阳性
+样本则包含了待检测的对象.阴性样本必须手工准备,而阳性样本可以采用
+\textcolor{teal}{opencv\_createsamples}自动生成.
+\subsubsection{阴性样本}
+阴性样本可以从任意不包含待检测对象的图像中采样,阴性样本需要以特定格式列举
+在一个描述性的文本文件中,每一行包含一个文件名,需要注意的是样本中的图像分
+辨率需要大于训练窗口尺寸.描述文件的示例如下:\\
+目录结构(阴性样本放置于\textit{negative\_images}文件夹内):
+\begin{lstlisting}[language=bash]
+/negative_images
+  img1.pgm
+  img2.pgm
+negatives.txt
+\end{lstlisting}
+生成的文件列表描述文件\textit{negatives.txt}格式:
+\begin{lstlisting}[language=bash]
+negative_images/img1.pgm
+negative_images/img2.pgm
+\end{lstlisting}
+文档中要求手动生成,然而可以采用\textit{bash}的\textit{find}命令来自动生成
+文件列表描述文件:
+\begin{lstlisting}[language=bash]
+find ./negative_images -iname "*.pgm" > negatives.txt
+\end{lstlisting}
+\subsubsection{阳性样本}
+阳性样本通过\textcolor{teal}{opencv\_createsamples}来生成,可从单一图像或是
+经过预标记的图像文件中提取.阳性样本的数量依赖于特定应用,例如,在识别公司logo
+的应用中,可能只需要1个阳性样本,而在人脸识别或是人体识别中,需要数以千计甚至更多
+的样本.关于\textcolor{teal}{opencv\_createsamples}的参数说明:
+\begin{enumerate}
+\item[$\bullet$]\textcolor{teal}{-vec <vec\_file\_name>}:输出文件名
+\item[$\bullet$]\textcolor{teal}{-img <image\_file\_name>}:源文件名
+\item[$\bullet$]\textcolor{teal}{-bg <background\_file\_name>}:背景描述文件,用于对象随机失真背景
+\item[$\bullet$]\textcolor{teal}{-num <number\_of\_samples>}:生成的阳性样本数量
+\item[$\bullet$]\textcolor{teal}{-bgcolor <background\_color>}:背景颜色(透明),可以和\textcolor{teal}{-bgthresh}配合设置背景色彩容限,在\textcolor{teal}{bgcolor-bgthresh}和\textcolor{teal}{bgcolor+bgthresh}区间内的像素视作透明.
+\item[$\bullet$]\textcolor{teal}{-inv}:设置反色
+\item[$\bullet$]\textcolor{teal}{-randinv}:随机反色
+\item[$\bullet$]\textcolor{teal}{-maxidev <max\_intensity\_deviation>}:前景样本内像素的最大强度偏差
+\item[$\bullet$]\textcolor{teal}{-maxx(y/z)angle <max\_x(y/z)\_rotation\_angle>}:
+最大旋转角度
+\item[$\bullet$]\textcolor{teal}{-show}:调试选项,可以显示样本
+\item[$\bullet$]\textcolor{teal}{-w <sample\_width}:输出样本的宽度
+\item[$\bullet$]\textcolor{teal}{-h <sample\_height}:输出样本的高度
+\end{enumerate}
+源图像会根据参数设置随机旋转,获得的图像随机放置在背景描述文件指定的任意背景上,
+按照参数设置的尺寸保存在\textit{*.vec}文件中.阳性样本也可以从预标记的图像集合
+内获取,图像集合需要一个描述性的文本文件,每一行描述一个文件,以文件名开始,后面接
+对象数量和对象坐标(\textit{(x,y,width,height)}格式).描述文件的示例如下:\\
+目录结构:
+\begin{lstlisting}[language=bash]
+/positive_images
+	img1.pgm
+	img2.pgm
+positives.txt
+\end{lstlisting}
+
+生成的列表描述文件\textit{positives.txt}文件格式:
+\begin{lstlisting}[language=bash]
+/positives_images/img1.pgm 1 140 100 45 45
+/positives_images/img2.pgm 2 100 200 50 50  50 30 25 25
+\end{lstlisting}
+从以上阳性样本集合中创建样本,需要\textcolor{teal}{-info}参数:
+\begin{enumerate}
+\item[$\bullet$]\textcolor{teal}{-info <collection\_file\_name>}:描述文件名
+\end{enumerate}
+不用设置失真,所以只还需要\textcolor{teal}{-w,-h,-show,-num}等参数.
+
+Daimler公司提供的数据集内的阳性样本
+(\textsf{DaimlerBenchmark/Data/TrainingData/Pedestrians})
+都是经过预标记的,所以只需要使用\textit{bash}命令\textit{find}可以
+生成阳性样本描述文件(以$18\times16$分辨率为例):
+\begin{lstlisting}[language=bash]
+find ./positive_images/ -name '*.pgm' -exec\ 
+	echo \{\} 1 0 0 18 36 \; >positives.txt
+\end{lstlisting}
+然后可以进行样本创建:
+\begin{lstlisting}[language=bash]
+opencv_createsamples -info positives.txt\
+	-vec positives.vec -w 18 -h 36
+\end{lstlisting}
+创建完成后可以使用\textcolor{teal}{-show}参数进行查看:
+\begin{lstlisting}[language=bash]
+opencv_createsamples -vec positives.vec -w 18 -h 36
+\end{lstlisting}
+
+\subsection{级联器训练}
+经过前面训练数据集的预处理准备，接下来采用
+\textcolor{teal}{opencv\_traincascade}来得到
+期望的级联器.在训练完成后,级联器会保存在\textit{*.xml}文件中.关于
+\textcolor{teal}{opencv\_traincascade}的参数:
+\begin{enumerate}
+\item[$\bullet$]\textcolor{teal}{-data <cascade\_dir\_name>}:级联器保存参数
+\item[$\bullet$]\textcolor{teal}{-vec <vec\_file\_name}:前面得到的阳性样本文件名
+\item[$\bullet$]\textcolor{teal}{-bg <background\_file\_name>}:背景文件(阴性)
+\item[$\bullet$]
+\textcolor{teal}{-numPos(Neg) <numer\_of\_positive(negative)\\\_samples>}:级联器
+每一层采用的阳性/阴性样本的数量
+\item[$\bullet$]\textcolor{teal}{-numStages <number\_of\_stages>}:级联器级数
+\item[$\bullet$]\textcolor{teal}{-precalcValBufSize <vals\_buffer\_size>}:预处理特征值的缓存区大小(Mb)
+\item[$\bullet$]\textcolor{teal}{-precalcIdxBufSize <idxs\_buffer\_size>}:预处理特征值索引的缓存区大小(Mb),与训练速度正相关.
+\item[$\bullet$]\textcolor{teal}{-baseFormatSave}:文件格式选择,指定后会存为旧格式
+\item[$\bullet$]\textcolor{teal}{-stageType <BOOST(default)>}:层类型
+\item[$\bullet$]\textcolor{teal}{-featureType <HAAR(default),LBP>}:特征类型,
+HAAR-Haar特征,LBP\cite{bib6}-局部二值特征\footnote{虽然\cite{bib1}中的
+结论指出Haar级联器在低分辨率和实时处理条件下表现最优,LBP特征与Haar特征相比训练和
+检测还会快许多倍,而分类的质量高度依赖于训练数据集和训练参数,训练出和Haar级联器质
+量相同的LBP级联器是可能的.}.
+\item[$\bullet$]\textcolor{teal}{-w(h) <sampleWidth(Height)>}:训练样本的尺寸,必须
+与样本生成中采用的尺寸一致.
+\item[$\bullet$]\textcolor{teal}{-bt <{DAB,RAB,LB,GAB(default)}>}:级联类型:
+DAB-离散AdaBoost,RAB-Real AdaBoost,LB-LogitBoost,GAB-Gentle AdaBoost.
+\item[$\bullet$]\textcolor{teal}{-minHitRate <min\_hit\_rate>}:单级检测率要求,
+整体检测率大概为$min\_hit\_rate^{number\_of\_stages}$.
+\item[$\bullet$]\textcolor{teal}{-maxFalseAlarmRate <max\_false\_alarm\_rate>}:
+最大误判率要求,整体误判率大概为$max\_false\_alarm\_rate^{number\_of\_stages}$.
+\item[$\bullet$]\textcolor{teal}{-weightTrimRate <weight\_trim\_rate>}:指定剪枝
+及权重,建议选择为0.95.
+\item[$\bullet$]\textcolor{teal}{-maxDepth <max\_depth\_of\_weak\_tree>}:树的最大
+深度,建议选择为1.
+\item[$\bullet$]\textcolor{teal}{-maxWeakCount <max\_weak\_tree\_count>}:单级
+树数量,为了满足\textcolor{teal}{-maxFalseAlarmRate}参数要求单级需要有
+$<=maxWeakCount$个树.
+\item[$\bullet$]\textcolor{teal}{-mode <BASIC(default)|CORE|ALL>}:选择Haar特征
+类型.BASIC-采用垂直特征,ALL-采用所有特征(垂直和旋转,如综述\cite{bib1}中所示).
+\end{enumerate}
+\cite{bib1}中指出级联层数$N_l$在$N_l=15$时达到饱和,按照其参数选择,在$18\times36$
+阳性样本分辨率下,配置15层级联,采用所有Haar特征,单层在15660个阳性样本和15660个阴
+性样本下训练,选定单级50\%的误判率和99.5\%的检测率\footnote{按照文档给定的估计方法
+,整个15级系统的检测率为$0.995^{15}=0.9276$,是比较低的,社区内的代码建议为单级0.9999.
+},运行时特征值缓存区和特征值索引缓存区大小设置为1024MB和1024MB,命令如下:
+\begin{lstlisting}
+opencv_traincascade -data classifier -vec positives.vec\
+  -bg negatives.txt -numStages 15 -minHitRate 0.995\ 
+  -maxFalseAlarmRate 0.5 -numPos 15660 -numNeg 15660\ 
+  -w 18 -h 36 -mode ALL -precalcValBufSize 1024\
+  -precalcIdxBufSize 1024
+\end{lstlisting}
+无论是社区还是实际操作来看,训练数据的准备是比较快的(只涉及到转换为二进制文件,计
+算消耗不大),但是训练过程非常缓慢,社区文档显示2011年产的Macbook Air在$10^3$数量
+级的样本数量条件下会耗时一周左右,样本量在15660的条件下可想而知训练时间会几何级
+地上升,采用普通计算机是不可行的.采用AWS EC2来操作或许是一种可行的方法.
+\subsection{分类}
+在训练完成后,利用获得的级联器\textit{*.xml}文件,可以进行分类测试.
+\begin{flushright}
+\colorbox{ForestGreen}{2014-3-1,下一步:实现测试程序,从测试图像中读取并}
+\colorbox{ForestGreen}{进行检测,对检测结果加边框标记.}
+\end{flushright}
+%Single Column Floating Figure
+%\begin{figure*}[!t]
+%\centering
+%\includegraphics[width=5in]{myfigure.pdf}
+%\caption{Simulation Results.}
+%\label{fig_sim}
+%\end{figure*}
+
+%double column floating figure
+%\begin{figure*}[!t]
+%\centering
+%\subfloat[Case I]{\includegraphics[width=2.5in]{box}%
+%\label{fig_first_case}}
+%\hfil
+%\subfloat[Case II]{\includegraphics[width=2.5in]{box}%
+%\label{fig_second_case}}
+%\caption{Simulation results.}
+%\label{fig_sim}
+%\end{figure*}
+
+%Floating Table
+%\begin{table}[!t]
+%\renewcommand{\arraystretch}{1.3}
+%\caption{An Example of a Table}
+%\label{table_example}
+%\centering
+%\begin{tabular}{|c||c|}
+%\hline
+%One & Two\\
+%\hline
+%Three & Four\\
+%\hline
+%\end{tabular}
+%\end{table}
+
+
+% bibliography section
+\begin{thebibliography}{99}
+\bibitem{bib1}
+Enzweiler, M.; Gavrila, D.M., "Monocular Pedestrian Detection: Survey and Experiments," Pattern Analysis and Machine Intelligence, IEEE Transactions on , vol.31, no.12, pp.2179,2195, Dec. 2009
+doi: 10.1109/TPAMI.2008.260
+\bibitem{bib2}
+Cascade Classifier Training,\url{http://docs.opencv.org/doc/user_guide/ug_traincascade.html}
+\bibitem{bib3}
+Cascade Classification,\url{http://docs.opencv.org/modules/objdetect/doc/cascade_classification.html}
+\bibitem{bib4}
+Learn how to train your own OpenCV Haar classifier,\url{https://github.com/mrnugget/opencv-haar-classifier-training}
+\bibitem{bib5}
+Tutorial:OpenCV haartraining,\url{http://note.sonots.com/SciSoftware/haartraining.html}	
+\bibitem{bib6}
+Shengcai Liao, Xiangxin Zhu, Zhen Lei, Lun Zhang and Stan Z. Li. Learning Multi-scale Block Local Binary Patterns for Face Recognition. International Conference on Biometrics (ICB), 2007, pp. 828-837.
+\end{thebibliography}
+%
+%\end{IEEEbiography}
+%\end{CJK}
+\end{document}
