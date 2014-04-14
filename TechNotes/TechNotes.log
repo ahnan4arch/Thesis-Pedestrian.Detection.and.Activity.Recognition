@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.1415926-2.5-0.9999.3 (TeX Live 2013) (format=xelatex 2014.2.22)  2 MAR 2014 08:28
+This is XeTeX, Version 3.1415926-2.5-0.9999.3 (TeX Live 2013) (format=xelatex 2014.2.22)  14 APR 2014 13:02
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1114,13 +1114,13 @@ LaTeX Info: Redefining \nameref on input line 24.
 
 
 LaTeX Font Warning: Font shape `EU1/SimSun(0)/m/sc' undefined
-(Font)              using `EU1/SimSun(0)/m/n' instead on input line 46.
+(Font)              using `EU1/SimSun(0)/m/n' instead on input line 47.
 
 (/usr/local/texlive/2013/texmf-dist/tex/generic/oberdiek/se-ascii-print.def
 File: se-ascii-print.def 2011/12/02 v1.10 stringenc: Printable ASCII characters
 
 )
-Underfull \hbox (badness 6708) in paragraph at lines 51--57
+Underfull \hbox (badness 6708) in paragraph at lines 52--58
 \EU1/lmr/m/n/10 2.x API \EU1/SimSun(0)/m/n/10 框 架 下 采 用 \EU1/lmr/m/n/10 C++ \EU
 1/SimSun(0)/m/n/10 实 现\EU1/lmr/m/n/10 , \EU1/SimSun(0)/m/n/10 故 采 用 后
  []
@@ -1138,22 +1138,22 @@ File: lstlang1.sty 2004/09/05 1.3 listings language file
 * 
 * Try to use `\setCJKmonofont[...]{...}' to define it.
 *************************************************
-LaTeX Font Info:    Try loading font information for EU1+lmtt on input line 66.
+LaTeX Font Info:    Try loading font information for EU1+lmtt on input line 67.
 
 (/usr/local/texlive/2013/texmf-dist/tex/latex/euenc/eu1lmtt.fd
 File: eu1lmtt.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
-LaTeX Font Info:    Try loading font information for U+msa on input line 88.
+LaTeX Font Info:    Try loading font information for U+msa on input line 89.
 
 (/usr/local/texlive/2013/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Try loading font information for U+msb on input line 88.
+LaTeX Font Info:    Try loading font information for U+msb on input line 89.
 
 (/usr/local/texlive/2013/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-Underfull \hbox (badness 6575) in paragraph at lines 96--98
+Underfull \hbox (badness 6575) in paragraph at lines 97--99
 [][]\EU1/lmr/m/n/10 -maxx(y/z)angle <max_x(y/z)_rotation_angle>[]:
  []
 
@@ -1165,75 +1165,95 @@ Underfull \hbox (badness 6575) in paragraph at lines 96--98
 * Try to use `\setCJKsansfont[...]{...}' to define it.
 *************************************************
 
-Underfull \hbox (badness 5741) in paragraph at lines 125--129
+Underfull \hbox (badness 5741) in paragraph at lines 126--130
 []\EU1/lmr/m/n/10 Daimler \EU1/SimSun(0)/m/n/10 公 司 提 供 的 数 据 集 内 的 阳 性 样 本
  []
 
 LaTeX Font Info:    Font shape `EU1/lmtt/bx/n' in size <7> not available
-(Font)              Font shape `EU1/lmtt/b/n' tried instead on input line 130.
+(Font)              Font shape `EU1/lmtt/b/n' tried instead on input line 131.
 [1
 
 ]
-Underfull \hbox (badness 1448) in paragraph at lines 144--149
+Underfull \hbox (badness 1448) in paragraph at lines 145--150
 \EU1/SimSun(0)/m/n/10 练 完 成 后\EU1/lmr/m/n/10 , \EU1/SimSun(0)/m/n/10 级 联 器 会 保 
 存 在 \EU1/lmr/m/it/10 *.xml \EU1/SimSun(0)/m/n/10 文 件 中\EU1/lmr/m/n/10 . \EU1/Si
 mSun(0)/m/n/10 关 于
  []
 
 
-Underfull \hbox (badness 3039) in paragraph at lines 167--169
+Underfull \hbox (badness 3039) in paragraph at lines 168--170
 [][]\EU1/lmr/m/n/10 -bt <DAB,RAB,LB,GAB(default)>[]: \EU1/SimSun(0)/m/n/10 级 联 
 类 型\EU1/lmr/m/n/10 :
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 167--169
+Underfull \hbox (badness 10000) in paragraph at lines 168--170
 \EU1/lmr/m/n/10 DAB-\EU1/SimSun(0)/m/n/10 离 散 \EU1/lmr/m/n/10 AdaBoost,RAB-Real
  AdaBoost,LB-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 171--173
+Underfull \hbox (badness 10000) in paragraph at lines 172--174
 [][]\EU1/lmr/m/n/10 -maxFalseAlarmRate <max_false_alarm_rate>[]:
  []
 
 
-Underfull \hbox (badness 7925) in paragraph at lines 171--173
+Underfull \hbox (badness 7925) in paragraph at lines 172--174
 \EU1/SimSun(0)/m/n/10 最 大 误 判 率 要 求\EU1/lmr/m/n/10 , \EU1/SimSun(0)/m/n/10 整 体 
 误 判 率 大 概 为
  []
 
+(/usr/local/texlive/2013/texmf-dist/tex/latex/listings/lstlang1.sty
+File: lstlang1.sty 2004/09/05 1.3 listings language file
+)
+(/usr/local/texlive/2013/texmf-dist/tex/latex/listings/lstlang1.sty
+File: lstlang1.sty 2004/09/05 1.3 listings language file
+)
+(/usr/local/texlive/2013/texmf-dist/tex/latex/listings/lstmisc.sty
+File: lstmisc.sty 2007/02/22 1.4 (Carsten Heinz)
+) [2]
+Overfull \hbox (12.60269pt too wide) in paragraph at lines 250--251
+[][][][][][][][][][][][][][][][][][][][][][][] 
+ []
 
-Underfull \hbox (badness 10000) in paragraph at lines 249--250
+
+Overfull \hbox (8.40265pt too wide) in paragraph at lines 267--269
+[][][][][][][][][][][][][][][] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 330--331
 []\EU1/lmr/m/n/8 Cascade Classification,[][]$[][][][] [] [] [] [][][][] [] [][]
 [][][][] [] [][][] [] [][][][][][][] []
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 253--254
+Underfull \hbox (badness 10000) in paragraph at lines 334--335
 []\EU1/lmr/m/n/8 Tutorial:OpenCV haartraining,[][]$[][][][] [] [] [] [][][][] [
 ] [][][][][][] [] [][][] []
  []
 
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 260.
-[2]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 260.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 341.
+[3
+
+]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 341.
  (./TechNotes.aux)
-Package atveryend Info: Empty hook `AtVeryEndDocument' on input line 260.
-Package atveryend Info: Empty hook `AtEndAfterFileList' on input line 260.
+Package atveryend Info: Empty hook `AtVeryEndDocument' on input line 341.
+Package atveryend Info: Empty hook `AtEndAfterFileList' on input line 341.
 
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 260.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 341.
  ) 
 Here is how much of TeX's memory you used:
- 25174 strings out of 493938
- 497591 string characters out of 6148857
- 558145 words of memory out of 5000000
- 28186 multiletter control sequences out of 15000+600000
- 30317 words of font info for 131 fonts, out of 8000000 for 9000
+ 25412 strings out of 493938
+ 501030 string characters out of 6148857
+ 598676 words of memory out of 5000000
+ 28416 multiletter control sequences out of 15000+600000
+ 30325 words of font info for 132 fonts, out of 8000000 for 9000
  1144 hyphenation exceptions out of 8191
- 52i,8n,51p,639b,1731s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 52i,8n,60p,639b,1834s stack positions out of 5000i,500n,10000p,200000b,80000s
 
-Output written on TechNotes.pdf (2 pages).
+Output written on TechNotes.pdf (3 pages).

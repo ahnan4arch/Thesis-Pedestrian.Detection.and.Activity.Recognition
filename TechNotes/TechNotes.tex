@@ -1,8 +1,8 @@
 %========================================================================
-%   FileName: monocularpedestrian.tex
+%   FileName: TechNotes.tex
 %     Author: GuanHWang
 %      Email: GuanHWang2011@gmail.com
-% LastChange: 2014-02-28 14:04:48
+% LastChange: 2014-04-14 09:09:08
 %========================================================================
 \documentclass[10pt,technote]{IEEEtran}
 \usepackage[CJKchecksingle,CJKnumber]{xeCJK}
@@ -23,22 +23,23 @@ breaklinks, colorlinks, linkcolor=red, urlcolor=ForestGreen, citecolor=magenta]{
 \punctstyle{plain}
 \begin{document}
 %\begin{CJK}{UTF8}{hei}
-\title{人体检测及行为分析的研究\\技术笔记}
-\author{王官皓}
+\title{基于Haar小波的AdaBoost级联器的OpenCV实现\\技术笔记}
+\author{OnceMore2020}
 
 %Headers
 \markboth{人体检测及行为分析的研究.~TechNotes.~2014}%
-{王官皓.~电子科技大学}
+{GuanHao.~电子科技大学}
 
 %Abstract
 \IEEEtitleabstractindextext{%
 \begin{abstract}
-人体检测及行为分析的研究中涉及到的技术细节以及毕业设计的诸多细节.
+基于Haar小波的AdaBoost级联器在低分辨率和(接近于)实时处理的应用场景下具有优势。笔记记录使用OpenCV提供的
+运算库的实现。
 \end{abstract}
 
 %Keywords
 \begin{IEEEkeywords}
-行人检测,行为分析,技术笔记.
+Haar小波特征,级联器,OpenCV,行人检测,技术笔记.
 \end{IEEEkeywords}}
 
 \maketitle
@@ -185,7 +186,7 @@ $<=maxWeakCount$个树.
 性样本下训练,选定单级50\%的误判率和99.5\%的检测率\footnote{按照文档给定的估计方法
 ,整个15级系统的检测率为$0.995^{15}=0.9276$,是比较低的,社区内的代码建议为单级0.9999.
 },运行时特征值缓存区和特征值索引缓存区大小设置为1024MB和1024MB,命令如下:
-\begin{lstlisting}
+\begin{lstlisting}[language=bash]
 opencv_traincascade -data classifier -vec positives.vec\
   -bg negatives.txt -numStages 15 -minHitRate 0.995\ 
   -maxFalseAlarmRate 0.5 -numPos 15660 -numNeg 15660\ 
@@ -196,12 +197,92 @@ opencv_traincascade -data classifier -vec positives.vec\
 算消耗不大),但是训练过程非常缓慢,社区文档显示2011年产的Macbook Air在$10^3$数量
 级的样本数量条件下会耗时一周左右,样本量在15660的条件下可想而知训练时间会几何级
 地上升,采用普通计算机是不可行的.采用AWS EC2来操作或许是一种可行的方法.
-\subsection{分类}
-在训练完成后,利用获得的级联器\textit{*.xml}文件,可以进行分类测试.
-\begin{flushright}
-\colorbox{ForestGreen}{2014-3-1,下一步:实现测试程序,从测试图像中读取并}
-\colorbox{ForestGreen}{进行检测,对检测结果加边框标记.}
-\end{flushright}
+\section{分类}
+在训练完成后,利用获得的级联器\textit{*.xml}文件,可以进行分类测试.程序实现读入单个
+测试文件并进行标记，在可视化输出预览的同时保存到输出文件。可以多次系统调用该程序
+实现对全部测试文件的标记。
+
+CMakeList.txt:
+\begin{lstlisting}[language=bash]
+cmake_minimum_required(VERSION 2.8)
+project( HaarCascade )
+find_package( OpenCV REQUIRED )
+add_executable( HaarCascade haar.cpp )
+target_link_libraries( HaarCascade ${OpenCV_LIBS} )
+\end{lstlisting}
+程序如下：
+\begin{lstlisting}[language=C++]
+#include "opencv2/objdetect/objdetect.hpp"
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+
+#include <iostream>
+#include <stdio.h>
+
+using namespace std;
+using namespace cv;
+
+void detectAndDisplay( Mat frame );
+
+//级联器文件
+String cascade_name = "cascade.xml";   
+//级联器
+CascadeClassifier ped_cascade;			
+//窗口ID
+string window_name = "Pedestrian detection";		
+
+int main( int argc, const char** argv )
+{
+   Mat frame;
+
+   //-- 1. 加载级联器
+   if( !ped_cascade.load( cascade_name ) )
+   { printf("--(!)Error loading\n"); return -1; };
+
+   //-- 2. 读入测试文件
+   frame = imread(argv[1]);
+
+   //-- 3. 对测试文件进行检测
+   if( !frame.empty() ){ 
+		detectAndDisplay( frame ); 
+	}
+   else{ 
+		printf(" --(!) Error reading image -- Break!"); 
+		return -1; 
+	}
+	waitKey(0);
+   return 0;
+ }
+
+void detectAndDisplay( Mat frame )
+{
+  std::vector<Rect> peds;	//目标位置
+  Mat frame_gray;		//灰度图像
+  
+  //-- 转换为灰度图像
+  cvtColor( frame, frame_gray, CV_BGR2GRAY );	
+
+  //-- 检测目标
+  ped_cascade.detectMultiScale( frame_gray, peds, 1.1, 2, 
+  			0|CV_HAAR_SCALE_IMAGE, Size(30, 30) );
+
+  //-- 可视化标记
+  for( size_t i = 0; i < peds.size(); i++ )
+  {
+    Point upleft( peds[i].x, peds[i].y );//左上角
+    Point downright( peds[i].x + peds[i].width, 
+		peds[i].y + peds[i].height );//右下角
+    rectangle( frame, upleft, downright,
+		Scalar(255,0,0));//矩形标记
+  }
+  //-- 可视化输出
+  imshow( window_name, frame );
+
+  //-- 写入输出文件
+  imwrite( "output.jpg", frame );
+}
+\end{lstlisting}
+
 %Single Column Floating Figure
 %\begin{figure*}[!t]
 %\centering

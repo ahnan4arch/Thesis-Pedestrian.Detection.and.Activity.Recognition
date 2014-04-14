@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 2.8)
+project( HaarCascade )
+find_package( OpenCV REQUIRED )
+add_executable( HaarCascade haar.cpp )
+target_link_libraries( HaarCascade ${OpenCV_LIBS} )
