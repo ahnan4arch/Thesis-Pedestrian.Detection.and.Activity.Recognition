@@ -1,0 +1,1 @@
+/home/oncemore/Thesis/Thesis-Pedestrian.Detection.and.Activity.Recognition/Implementation/HOG/CMakeFiles/HOGDetect.dir
