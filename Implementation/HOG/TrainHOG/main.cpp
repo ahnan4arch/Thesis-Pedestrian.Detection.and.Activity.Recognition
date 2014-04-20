@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <dirent.h>
 #include <ios>
@@ -13,23 +14,22 @@ using namespace std;
 using namespace cv;
 
 // 样本路径名
-static string posSamplesDir = "pos/";
-static string negSamplesDir = "neg/";
+static string posSamplesDir = "positives/";
+static string negSamplesDir = "negatives/";
 
 // 存储HOG特征
-static string featuresFile = "genfiles/features.dat";
+static string featuresFile = "features.dat";
 
 // 存储SVM模型
-static string svmModelFile = "genfiles/svmlightmodel.dat";
+static string svmModelFile = "svmlightmodel.dat";
 
-// Set the file to write the resulting detecting descriptor vector to
-static string descriptorVectorFile = "genfiles/descriptorvector.dat";
+// 存储HOG特征描述符
+static string descriptorVectorFile = "descriptorvector.dat";
 
 static const Size trainingPadding = Size(0, 0); //填充值
 static const Size winStride = Size(8, 8);			//窗口步进
 
-/* Helper functions */
-
+// 字母小写转换
 static string toLowerCase(const string& in) {
     string t;
     for (string::const_iterator i = in.begin(); i != in.end(); ++i) {
@@ -50,9 +50,8 @@ static void resetCursor(void) {
 /**
  * 保存给定的HOG特征描述符到文件
  * @param descriptorVector: 待保存的HOG特征描述符矢量
- * @param _vectorIndices contains indices for the corresponding vector values (e.g. descriptorVector(0)=3.5f may have index 1)
+ * @param _vectorIndices
  * @param fileName
- * @TODO Use _vectorIndices to write correct indices
  */
 static void saveDescriptorVectorToFile(vector<float>& descriptorVector, vector<unsigned int>& _vectorIndices, string fileName) {
     printf("保存HOG特征描述符：'%s'\n", fileName.c_str());
@@ -127,6 +126,7 @@ static void calculateFeaturesFromInput(const string& imageFilename, vector<float
     hog.compute(imageData, featureVector, winStride, trainingPadding, locations);
     imageData.release(); 
 }
+
 
 int main(int argc, char** argv) {
 	 // 使用默认参数
