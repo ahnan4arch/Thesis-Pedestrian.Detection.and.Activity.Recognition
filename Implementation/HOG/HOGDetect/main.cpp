@@ -1,3 +1,11 @@
+#include <stdio.h>
+#include <opencv2/opencv.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/ml/ml.hpp>
+
+using namespace std;
+using namespace cv;
+
 /**
  * 显示检测结果
  * @param found:包含有效检测结果的矩形
@@ -16,7 +24,13 @@ static void showDetections(const vector<Rect>& found, Mat& imageData) {
     }
     for (i = 0; i < found_filtered.size(); i++) {
         Rect r = found_filtered[i];
-        rectangle(imageData, r.tl(), r.br(), Scalar(64, 255, 64), 3);
+		  r.x += cvRound(r.width*0.1);
+		  r.width = cvRound(r.width*0.8);
+		  r.y += cvRound(r.height*0.07);
+		  r.height = cvRound(r.height*0.8);
+        rectangle(imageData, r.tl(), r.br(), Scalar(0, 255, 0), 3);
+		  putText(imageData,"Pedestrian",Point(r.x, r.y+r.height),
+				  FONT_HERSHEY_SIMPLEX,r.width*0.006,CV_RGB(255, 20, 147),2.0);
     }
 }
 
@@ -37,8 +51,14 @@ static void detectTest(const HOGDescriptor& hog, Mat& imageData) {
 
 
 int main(int argc, char** argv) {
-	// 加载训练的HOG特征描述符文件
-    hog.setSVMDetector(descriptorVector); 
+
+	 // 使用默认参数
+    HOGDescriptor hog; 
+    // DT-2005建议参数
+	 //hog.winSize = Size(64, 128); 
+	 // 加载训练的HOG特征描述符文件
+    //hog.setSVMDetector(descriptorVector); 
+    hog.setSVMDetector(HOGDescriptor::getDefaultPeopleDetector());
     Mat testImage;
 	 testImage=imread("test.jpg");
 	 imshow("origin image",testImage);

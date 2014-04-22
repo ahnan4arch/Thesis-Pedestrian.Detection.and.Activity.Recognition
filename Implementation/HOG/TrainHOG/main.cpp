@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <dirent.h>
 #include <ios>
@@ -14,8 +13,8 @@ using namespace std;
 using namespace cv;
 
 // 样本路径名
-static string posSamplesDir = "positives/";
-static string negSamplesDir = "negatives/";
+static string posSamplesDir = "pos/";
+static string negSamplesDir = "neg/";
 
 // 存储HOG特征
 static string featuresFile = "features.dat";
@@ -117,11 +116,11 @@ static void calculateFeaturesFromInput(const string& imageFilename, vector<float
         return;
     }
     // 检测图像尺寸
-    if (imageData.cols != hog.winSize.width || imageData.rows != hog.winSize.height) {
-        featureVector.clear();
-        printf("图像'%s' 尺寸(%u x %u)与HOG窗口(%u x %u)不匹配\n", imageFilename.c_str(), imageData.cols, imageData.rows, hog.winSize.width, hog.winSize.height);
-        return;
-    }
+    //if (imageData.cols != hog.winSize.width || imageData.rows != hog.winSize.height) {
+    //    featureVector.clear();
+    //    printf("图像'%s' 尺寸(%u x %u)与HOG窗口(%u x %u)不匹配\n", imageFilename.c_str(), imageData.cols, imageData.rows, hog.winSize.width, hog.winSize.height);
+    //    return;
+    //}
     vector<Point> locations;
     hog.compute(imageData, featureVector, winStride, trainingPadding, locations);
     imageData.release(); 

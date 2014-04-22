@@ -2,7 +2,7 @@
 %   FileName: TechNotes.tex
 %     Author: GuanHWang
 %      Email: GuanHWang2011@gmail.com
-% LastChange: 2014-04-20 08:39:27
+% LastChange: 2014-04-21 10:11:18
 %========================================================================
 \documentclass[10pt,technote,onecolumn,twoside]{IEEEtran}
 \usepackage[CJKchecksingle,CJKnumber]{xeCJK}
@@ -282,8 +282,11 @@ HOGDescriptor::compute(const Mat& img,
 \end{enumerate}
 
 \subsection{HOG/linSVM程序实现}
-在$SVM^{Light}$网站上可以下载到其程序包。
+在$SVM^{Light}$网站上可以下载到其程序包，将解压缩的文件放到文件夹\textsf{svmlight}当中。实现过程参考\cite{bib8}。
+\subsubsection{训练HOG描述符}
+在工作目录下设置文件夹\textsf{/pos}和\textsf{/neg}分别用于放置阳性样本和阴性样本。
 
+代码:\url{https://gist.github.com/OnceMore2020/11162992}
 % text color
 %\textcolor{teal}{}
 
@@ -346,6 +349,10 @@ D.G.Lowe.Distinctive image features from scale-invariant keypoints.IJCV,2004.
 Histogram of oriented gradients,\url{http://en.wikipedia.org/wiki/Histogram_of_oriented_gradients}
 \bibitem{bib7}
 SVMLight,Support Vector Machine,\url{http://svmlight.joachims.org/}
+\bibitem{bib8}
+trainHOG,\url{https://github.com/DaHoC/trainHOG}
+\bibitem{bib9}
+Improving Object Detection with Boosted Histograms,I. Laptev; in Proc. BMVC'06, Edinburgh, UK, pp. III:949-958.
 \end{thebibliography}
 %
 %\end{IEEEbiography}

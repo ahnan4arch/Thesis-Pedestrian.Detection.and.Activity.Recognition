@@ -13,4 +13,5 @@
 \BOOKMARK [3][-]{subsubsection.2.2.6}{II-B6\040HOGDescriptor::detectMultiScale}{subsection.2.2}% 13
 \BOOKMARK [3][-]{subsubsection.2.2.7}{II-B7\040HOGDescriptor::compute}{subsection.2.2}% 14
 \BOOKMARK [2][-]{subsection.2.3}{II-C HOG/linSVM程序实现}{section.2}% 15
-\BOOKMARK [1][-]{section*.1}{References}{}% 16
+\BOOKMARK [3][-]{subsubsection.2.3.1}{II-C1 训练HOG描述符}{subsection.2.3}% 16
+\BOOKMARK [1][-]{section*.1}{References}{}% 17
