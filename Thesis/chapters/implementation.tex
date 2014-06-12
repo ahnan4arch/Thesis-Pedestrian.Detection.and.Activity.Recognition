@@ -1,0 +1,589 @@
+\chapter{具体实现及效果}
+\section{运算库}
+\subsection{OpenCV2开源视觉运算库}
+OpenCV\cite{opencv}的全称是Open Source Computer Vision Library，是一个跨平台的
+计算机视觉库。OpenCV最早由Intel公司发起并参与开发，以BSD许可证授权发行，可以在
+商业和研究领域中免费使用。OpenCV可用于开发实时的图像处理，计算机视觉以及模式识别
+程序。最新的2.x版将开发和算法改用为C++接口。该程序库也可以使用Intel公司的IPP进行加速处理。
+
+OpenCV具有长期保持活跃的用户社区以及由社区内的开发人员和用户维护的较完善的API文档
+\cite{opencvdoc}，同时也有关于OpenCV2
+的书籍，如\cite{opencvbook}等，总之，OpenCV2是目前最方便的开源视觉运算库。本文的
+部分实现都将依赖于OpenCV2提供的接口。
+
+\subsection{$SVM^{light}$运算库}
+$\mathrm{SVM}^{light}$\cite{SVMLight}是支持向量机的一种快速实现，主要由康奈尔大学计算机系
+的Thorsten Joachims负责的开发小组采用C编写，具有可调节
+内存需求的功能，可以用于许多二值分类问题。其主要特点是采用了多种快速优化算法提高程序的效率，
+支持标准核函数并可自定义配置。本文将采用$\mathrm{SVM}^{light}$来实现HOG/linSVM架构。
+要实现多类问题的分类，需要使用其分支版本$\mathrm{SVM}^{struct}$，即用于多类人体行为分析
+的分类任务中。
+
+\subsection{STIP-2.0-linux}
+由法国国家信息与自动化研究所的Laptev编写的用于计算视频中时空兴趣点的位置及特征描述符
+的程序，发布形式为二进制版本\footnote{可从\url{ww.di.ens.fr/~laptev/download.html}下载。}。
+程序基本算法来自\cite{ostip}，尺度选择方面采用\cite{stip}中改进的多时空域尺度算法(参考第4章)。
+程序提供了检测兴趣点并可视化表示以及计算检测出的兴趣点的邻域(时空域网格)的HOG和HOF描述符
+的功能。
+\section{数据集合}
+数据集合采用了\cite{survey}中用到的Daimler数据库，以及INRIA Person数据库等用于人体检测，
+行为分析方面采用\cite{stip}中采用自动标注方法提取的Hollywood Human Action数据库。关于
+数据集合的详细介绍见第1章。
+\section{Haar/AdaBoost行人检测}
+基于Haar小波的AdaBoost级联器\cite{haar}在低分辨率和(接近于)实时处理的应用场景下具有优势。本节介绍
+采用OpenCV2提供的运算库来对其进行实现的细节，主要涉及到训练数据的准备，训练以及分类的实现
+。
+\subsection{训练数据的准备}
+训练样本有两种类型：阴性样本(负样本)和阳性样本(正样本)。阴性样本没有包含目标对象，阳性
+样本则包含了待检测的对象。阴性样本必须手工准备，而阳性样本可以采用
+\textsf{opencv\_createsamples}自动生成。
+
+\textbf{阴性样本}~~
+阴性样本可以从任意不包含待检测对象的图像中采样，阴性样本需要以特定格式列举
+在一个描述性的文本文件中，每一行包含一个文件名，需要注意的是样本中的图像分
+辨率需要大于训练窗口尺寸。描述文件的示例如下:\\
+目录结构(阴性样本放置于\textsf{negative\_images}文件夹内):
+\begin{lstlisting}[language=bash]
+/negative_images
+  img1.pgm
+  img2.pgm
+negatives.txt
+\end{lstlisting}
+生成的文件列表描述文件\textit{negatives.txt}格式：
+\begin{lstlisting}[language=bash]
+negative_images/img1.pgm
+negative_images/img2.pgm
+\end{lstlisting}
+文档中要求手动生成，然而可以采用\textit{bash}的\textit{find}命令来自动生成
+文件列表描述：
+\begin{lstlisting}[language=bash]
+find ./negative_images -iname "*.pgm" > negatives.txt
+\end{lstlisting}
+
+\textbf{阳性样本}~~
+阳性样本通过\textsf{opencv\_createsamples}来生成，可从单一图像或是
+经过预标记的图像文件中提取。阳性样本的数量依赖于特定应用，例如，在识别公司logo
+的应用中，可能只需要1个阳性样本，而在人脸识别或是人体识别中，需要数以千计甚至更多
+的样本。关于\textsf{opencv\_createsamples}的参数说明：
+\begin{enumerate}
+\item[$\bullet$]\textsf{-vec $<$vec\_file\_name$>$}:输出文件名
+\item[$\bullet$]\textsf{-img $<$image\_file\_name$>$}:源文件名
+\item[$\bullet$]\textsf{-bg $<$background\_file\_name$>$}:背景描述文件，用于对象随机失真背景
+\item[$\bullet$]\textsf{-num $<$number\_of\_samples$>$}:生成的阳性样本数量
+\item[$\bullet$]\textsf{-bgcolor $<$background\_color$>$}:背景颜色(透明)，可以和\textsf{-bgthresh}配合设置背景色彩容限，在\textsf{bgcolor-bgthresh}和\textsf{bgcolor+bgthresh}区间内的像素视作透明.
+\item[$\bullet$]\textsf{-inv}:设置反色
+\item[$\bullet$]\textsf{-randinv}:随机反色
+\item[$\bullet$]\textsf{-maxidev $<$max\_intensity\_deviation$>$}:前景样本内像素的最大强度偏差
+\item[$\bullet$]\textsf{-max\_x(y/z)angle $<$max\_x(y/z)\_rotation\_angle$>$}:
+最大旋转角度
+\item[$\bullet$]\textsf{-show}:调试选项，可以显示样本
+\item[$\bullet$]\textsf{-w $<$sample\_width$>$}:输出样本的宽度
+\item[$\bullet$]\textsf{-h $<$sample\_height$>$}:输出样本的高度
+\end{enumerate}
+源图像会根据参数设置随机旋转，获得的图像随机放置在背景描述文件指定的任意背景上，
+按照参数设置的尺寸保存在\textit{*.vec}文件中。阳性样本也可以从预标记的图像集合
+内获取，图像集合需要一个描述性的文本文件，每一行描述一个文件，以文件名开始，后面接
+对象数量和对象坐标((x，y，width，height)格式)。描述文件的示例如下:\\
+目录结构:
+\begin{lstlisting}[language=bash]
+/positive_images
+	img1.pgm
+	img2.pgm
+positives.txt
+\end{lstlisting}
+
+生成的列表描述文件\textit{positives.txt}文件格式:
+\begin{lstlisting}[language=bash]
+/positives_images/img1.pgm 1 140 100 45 45
+/positives_images/img2.pgm 2 100 200 50 50  50 30 25 25
+\end{lstlisting}
+从以上阳性样本集合中创建样本，需要\textsf{-info}参数:
+\begin{enumerate}
+\item[$\bullet$]\textsf{-info $<$collection\_file\_name$>$}:描述文件名
+\end{enumerate}
+不用设置失真，所以只还需要\textsf{-w,-h,-show,-num}等参数.
+
+Daimler数据集内的正样本
+(\textsf{DaimlerBenchmark/Data/TrainingData/Pedestrians})
+都是经过预标记裁剪的，所以只需要使用\textsf{bash}命令\textsf{find}可以
+生成阳性样本描述文件(以$18\times16$分辨率为例):
+\begin{lstlisting}[language=bash]
+find ./positive_images/ -name '*.pgm' -exec\
+	echo \{\} 1 0 0 18 36 \; >positives.txt
+\end{lstlisting}
+然后可以进行样本创建:
+\begin{lstlisting}[language=bash]
+opencv_createsamples -info positives.txt\
+	-vec positives.vec -w 18 -h 36
+\end{lstlisting}
+创建完成后可以使用\textsf{-show}参数进行查看:
+\begin{lstlisting}[language=bash]
+opencv_createsamples -vec positives.vec -w 18 -h 36
+\end{lstlisting}
+
+\subsection{级联器训练}
+OpenCV提供了两种训练方法：\textsf{opencv\_haartraining}和
+\textsf{opencv\_traincascade}。后者是较新的版本，在OpenCV 2.x
+API框架下采用C++实现。\textsf{opencv\_traincascade}
+可以采用TBB库进行多线程运算,需要用TBB编译的OpenCV库。
+在训练完成后，级联器文件会保存在\textsf{*.xml}中。下面介绍关于
+\textsf{opencv\_traincascade}的参数:
+\begin{enumerate}
+\item[$\bullet$]\textsf{-data $<$cascade\_dir\_name$>$}:级联器保存参数
+\item[$\bullet$]\textsf{-vec $<$vec\_file\_name$>$}:前面得到的阳性样本文件名
+\item[$\bullet$]\textsf{-bg $<$background\_file\_name$>$}:背景文件(阴性)
+\item[$\bullet$]
+\textsf{-numPos(Neg) $<$numer\_of\_positive(negative)\_samples$>$}:级联器
+每一层采用的阳性/阴性样本的数量
+\item[$\bullet$]\textsf{-numStages $<$number\_of\_stages$>$}:级联器级数
+\item[$\bullet$]\textsf{-precalcValBufSize $<$vals\_buffer\_size$>$}:预处理特征值的缓存区大小(Mb)
+\item[$\bullet$]\textsf{-precalcIdxBufSize $<$idxs\_buffer\_size$>$}:预处理特征值索引的缓存区大小(Mb),与训练速度正相关.
+\item[$\bullet$]\textsf{-baseFormatSave}:文件格式选择,指定后会存为旧格式
+\item[$\bullet$]\textsf{-stageType $<$BOOST(default)$>$}:层类型
+\item[$\bullet$]\textsf{-featureType $<$HAAR(default),LBP$>$}:特征类型,
+HAAR-Haar特征，LBP-局部二值特征
+\item[$\bullet$]\textsf{-w(h) $<$sampleWidth(Height)$>$}:训练样本的尺寸,必须
+与样本生成中采用的尺寸一致.
+\item[$\bullet$]\textsf{-bt $<${DAB,RAB,LB,GAB(default)}$>$}:级联类型:
+DAB-离散AdaBoost,RAB-Real AdaBoost,LB-LogitBoost,GAB-Gentle AdaBoost.
+\item[$\bullet$]\textsf{-minHitRate $<$min\_hit\_rate$>$}:单级检测率要求\\
+    整体检测率大概为$\textsf{min\_hit\_rate}^\textsf{number\_of\_stages}$.
+\item[$\bullet$]\textsf{-maxFalseAlarmRate $<$max\_false\_alarm\_rate$>$}:
+    最大误判率要求,整体误判率大概为$\textsf{max\_false\_alarm\_rate}^\textsf{number\_of\_stages}$.
+\item[$\bullet$]\textsf{-weightTrimRate $<$weight\_trim\_rate$>$}:指定剪枝
+及权重,建议选择为0.95.
+\item[$\bullet$]\textsf{-maxDepth $<$max\_depth\_of\_weak\_tree$>$}:树的最大
+深度,建议选择为1.
+\item[$\bullet$]\textsf{-maxWeakCount $<$max\_weak\_tree\_count$>$}:单级
+树数量\\为了满足\textsf{-maxFalseAlarmRate}参数要求单级需要有
+$\leq{}\textsf{maxWeakCount}$个树.
+\item[$\bullet$]\textsf{-mode $<$BASIC(default)|CORE|ALL$>$}:选择Haar特征
+类型。BASIC-采用垂直特征，ALL-采用所有特征(垂直和旋转，如综述\cite{survey}中所示)。
+\end{enumerate}
+\cite{survey}中指出级联层数$N_l$在$N_l=15$时达到饱和，按照其参数选择，在$18\times36$
+阳性样本分辨率下，配置15层级联，采用所有Haar特征，单层在15660个阳性样本和15660个阴
+性样本下训练，选定单级50\%的误判率和99.5\%的检测率\footnote{按照文档给定的估计方法
+，整个15级系统的检测率为$0.995^{15}=0.9276$，是比较低的，社区内的代码建议为单级0.9999。
+}，运行时特征值缓存区和特征值索引缓存区大小设置为1024MB和1024MB，命令如下：
+\begin{lstlisting}[language=bash]
+opencv_traincascade -data classifier -vec positives.vec\
+  -bg negatives.txt -numStages 15 -minHitRate 0.995\
+  -maxFalseAlarmRate 0.5 -numPos 15660 -numNeg 15660\
+  -w 18 -h 36 -mode ALL -precalcValBufSize 1024\
+  -precalcIdxBufSize 1024
+\end{lstlisting}
+无论是社区还是实际操作来看，训练数据的准备是比较快的(只涉及到转换为二进制文件，计
+算消耗不大)，但是训练过程非常缓慢，毕竟样本数量是非常庞大的，采用AWS EC2来操作或许
+是一种快速可行的方法。
+
+\subsection{分类}
+在训练完成后，利用获得的级联器\textsf{*.xml}文件，可以进行分类(人体检测)测试。
+
+\textbf{单个输入文件测试}~~程序实现读入单个测试文件并进行标记，在可视化输出预览的同时
+保存到输出文件。可以多次系统调用该程序实现对全部测试文件的标记。下面对程序的关键部分
+进行解释\footnote{本论文中所有的实现都托管在
+\url{https://github.com/OnceMore2020/Thesis-Pedestrian.Detection.and.Activity.Recognition}，
+包括毕业设计期间的文献翻译，技术笔记等材料。}。
+
+包含头文件，包括标准IO和OpenCV2的目标检测(objdetect)，GUI(highgui)以及图像处理(imgproc)
+模块。声明命名空间。
+
+\begin{lstlisting}[language=C]
+#include "opencv2/objdetect/objdetect.hpp"
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+
+#include <iostream>
+#include <stdio.h>
+
+using namespace std;
+using namespace cv;
+\end{lstlisting}
+
+全局变量，包括级联器文件名以及级联器和窗口ID。
+
+\begin{lstlisting}[language=C]
+String cascade_name = "cascade.xml";
+CascadeClassifier ped_cascade;
+string window_name = "Pedestrian detection";
+\end{lstlisting}
+
+将检测和显示功能封装进\textsf{detectAndDisplay}函数，提供给\textsf{main}函数调用。
+\begin{lstlisting}[language=C++]
+void detectAndDisplay( Mat frame )
+\end{lstlisting}
+
+这样做的优点是模块化，并且方便未来工作的扩展。主要由\textsf{detectMultiScale}完成
+人体检测的工作，将检测到的人体区域存储进数组中。
+\begin{lstlisting}
+  ped_cascade.detectMultiScale( frame_gray, peds, 1.1, 2,
+  			0|CV_HAAR_SCALE_IMAGE, Size(30, 30) );
+\end{lstlisting}
+
+然后对检测到的目标进行标记。
+\begin{lstlisting}[language=C++]
+  for( size_t i = 0; i < peds.size(); i++ )
+  {
+    Point upleft( peds[i].x, peds[i].y );
+    Point downright( peds[i].x + peds[i].width,
+		peds[i].y + peds[i].height );
+    rectangle( frame, upleft, downright,
+		Scalar(255,0,0));
+  }
+\end{lstlisting}
+
+然后可视化输出并存储到文件。
+\begin{lstlisting}[language=C++]
+  imshow( window_name, frame );
+  imwrite( "output.jpg", frame );
+\end{lstlisting}
+
+
+主函数，加载级联器文件，读入输入图像，调用\textsf{detectAndDisplay}函数，完成对一张图片的检测。
+\begin{lstlisting}[language=C++]
+int main( int argc, const char** argv )
+{
+   Mat frame;
+
+   if( !ped_cascade.load( cascade_name ) )
+   { printf("--(!)Error loading\n"); return -1; };
+
+   frame = imread(argv[1]);
+   if( !frame.empty() ){
+		detectAndDisplay( frame );
+	}
+   else{
+		printf(" --(!) Error reading image -- Break!");
+		return -1;
+	}
+	waitKey(0);
+    return 0;
+ }
+\end{lstlisting}
+
+在Ubuntu12.04环境下使用CMake2.8编译并运行程序，CMakeList.txt内容如下:
+\begin{lstlisting}[language=bash]
+cmake_minimum_required(VERSION 2.8)
+project( HaarCascade )
+find_package( OpenCV REQUIRED )
+add_executable( HaarCascade haar.cpp )
+target_link_libraries( HaarCascade ${OpenCV_LIBS} )
+\end{lstlisting}
+
+\textbf{可选扩展：批处理输入文件}~~
+系统调用的方式是可以方便地控制处理文件的数量，以及随时可以选择暂停处理。缺点是不够自动化，设想
+程序能够自动读取文件夹内的输入文件，然后对所有文件进行批量识别，结果以文件的形式输出。现在
+来实现这个扩展。
+
+首先设置存放测试文件的目录名字
+\begin{lstlisting}{language=C++}
+static string testImagesFolder = "test/";
+\end{lstlisting}
+
+引入函数\textsf{getFilesInDirectory}，扫描目录内的所有文件，筛选出符合指定扩展的文件，然后
+存储进数组:
+\begin{lstlisting}{language=C++}
+static void getFilesInDirectory(const string& dirName,
+    vector<string>& fileNames, const vector<string>& validExtensions);
+\end{lstlisting}
+
+主函数\textsf{main}调用以上函数后逐个处理输入文件：
+\begin{lstlisting}{language=C++}
+    getFilesInDirectory(testImagesFolder, testImages, validExtensions);
+    unsigned long overallSamples = testImages.size();
+    cout << "Totally:" << overallSamples << "Files" << endl;
+
+    for(unsigned long tmp = 0; tmp < overallSamples; ++tmp){
+        const string currentImageFile = testImages.at(tmp);
+        frame = imread(currentImageFile);
+        if( !frame.empty() ){
+		    detectAndDisplay( frame, currentImageFile );
+        }
+        else{
+		printf(" --(!) Error reading image -- Break!");
+		return -1;
+        }
+	}
+\end{lstlisting}
+
+注意\textsf{detectAndDisplay}函数参数列表扩展为两个，方便输入逐次覆盖源文件。
+
+\textbf{可选扩展：处理视频文件}~~实际应用中处理的多是实时视频文件，扩展程序
+能够读入视频文件，进行逐帧处理。首先指定输入文件名
+\begin{lstlisting}{language=C++}
+String input_video="input.avi";     //input video file
+\end{lstlisting}
+然后读入视频文件，逐帧进行处理：
+\begin{lstlisting}{language=C++}
+   VideoCapture inputVideo(input_video);
+   if( inputVideo.isOpened() ){
+        double fps=inputVideo.get(CV_CAP_PROP_FPS);
+        cout << "FPS:" << fps << endl;
+		while(true)
+        {
+            bool bSuccess = inputVideo.read( frame );
+            if( !bSuccess )
+            {
+                cout << "cannot get frames from video" << endl;
+                break;
+            }
+            detectAndDisplay( frame );
+            if (waitKey(30)==27)
+            {
+                cout << "Press ESC to exit" << endl;
+                break;
+            }
+        }
+	}
+    else{
+		printf(" --(!) Error reading video -- Break!");
+		return -1;
+	}
+\end{lstlisting}
+
+\section{HOG/SVM行人检测}
+\subsection{OpenCV2相关库}
+OpenCV2在\textsf{/samples/cpp/peopledetect.cpp}中提供了采用HOG特征描述符实现的人体检测的例程，
+同时提供了GPU和OPENCL加速的HOG特征描述符，分别为\textsf{gpu::HOGDescriptor}和
+\textsf{ocl::HOGDescriptor}。CPU HOG的实现：
+\url{https://github.com/Itseez/opencv/blob/master/modules/objdetect/src/hog.cpp}。
+GPU加速的实现：\textsf{/samples/gpu/hog.cpp}。
+OPENCL加速的实现：\textsf{/samples/ocl/hog.cpp}。
+
+OpenCV提供的头文件在\textsf{include}文件夹中，在Ubuntu 12.04下使用源码编译OpenCV2后可以
+在\textsf{/usr/local/include}文件夹下找到。
+
+\subsection{CPU HOG简单例程}
+\textsf{HOGDescriptor}类定义在\textsf{object.hpp}中，采用\textsf{HOGDescriptor}的实现可以
+在\url{https://github.com/Itseez/opencv/blob/master/samples/cpp/peopledetect.cpp}上找到。
+程序采用了\textsf{HOGDescriptor::getDefaultPeopleDetector()}来加载默认的行人检测器，接
+下来的问题是怎样使用手里已有的数据集来训练自己的分类器，这就需要了解OpenCV提供的HOG描述符类接口。
+
+\subsection{HOGDescriptor类接口}
+可以在\textsf{objdetect.hpp}中找到\textsf{HOGDescriptor}的类接口声明，
+在\url{https://github.com/Itseez/opencv/blob/master/modules/objdetect/src/hog.cpp}找到其实现。
+但是，OpenCV没有提供关于HOGDescriptor的文档，下面结合源码对重要的函数进行解释。
+
+\textbf{HOGDescriptor::HOGDescriptor}~~
+如下面代码所示：
+\begin{lstlisting}[language=C++]
+    CV_WRAP HOGDescriptor(Size _winSize, Size _blockSize, Size _blockStride,
+                  Size _cellSize, int _nbins, int _derivAperture=1, double _winSigma=-1,
+                  int _histogramNormType=HOGDescriptor::L2Hys,
+                  double _L2HysThreshold=0.2, bool _gammaCorrection=false,
+                  int _nlevels=HOGDescriptor::DEFAULT_NLEVELS)
+\end{lstlisting}
+结合第2章理论基础，很容易理解其参数列表：
+\begin{enumerate}
+\item[$\bullet$]\textbf{\_winSize}~~检测器窗口尺寸，需要和区块尺寸和区块步进对齐。默认采用$64\times128$像素。
+\item[$\bullet$]\textbf{\_blockSize}~~区块尺寸，需要和单元尺寸对齐。默认采用$16\times16$像素。
+\item[$\bullet$]\textbf{\_blockStride}~~区块步进，需要是单元尺寸的整数倍。默认采用$8\times8$像素。
+\item[$\bullet$]\textbf{\_cellSize}~~单元尺寸。默认采用$8\times8$像素。
+\item[$\bullet$]\textbf{\_nbins}~~分箱数量。默认采用9箱。
+\item[$\bullet$]\textbf{\_derivAperture}~~微分算子。
+\item[$\bullet$]\textbf{\_winSigma}~~高斯平滑窗口参数。
+\item[$\bullet$]\textbf{\_histogramNormType}~~直方图标准化方式。默认采用L2-Hys标准化\cite{DT2005}。
+\item[$\bullet$]\textbf{\_L2HysThreshold}~~L2-Hys标准化截断门限值。默认采用0.2。
+\item[$\bullet$]\textbf{\_gammaCorrection}~~标识是否要加入伽玛校正预处理模块。默认采用。
+\item[$\bullet$]\textbf{\_nlevels}~~多尺寸检测时HOG检测窗口最大缩放倍数。默认为64。
+\end{enumerate}
+其中\textsf{nlevels}变量需要结合\textsf{hog.cpp}中的下面代码来理解其意思:
+\begin{lstlisting}[language=C++]
+for( levels = 0; levels < nlevels; levels++ )
+{
+	levelScale.push_back(scale);
+    if( cvRound(imgSize.width/scale) < winSize.width ||
+        cvRound(imgSize.height/scale) < winSize.height ||
+        scale0 <= 1 )
+            break;
+        scale *= scale0;
+}
+\end{lstlisting}
+
+\textbf{HOGDescriptor::getDescriptorSize}~~
+返回HOG特征描述符维度。
+
+\textbf{HOGDescriptor::setSVMDetector}~~
+设置线性SVM分类器的参数。
+
+\textbf{HOGDescriptor::getDefaultPeopleDetector}~~
+返回OpenCV提供的用于人体检测的分类器参数(默认检测器窗口尺寸)。
+
+\textbf{HOGDescriptor::detect}~~
+进行对象检测，不进行检测窗口多尺寸缩放。
+\begin{lstlisting}[language=C++]
+HOGDescriptor::detect(const Mat& img, CV_OUT std::vector<Point>& foundLocations,
+                        CV_OUT std::vector<double>& weights,
+                        double hitThreshold = 0, Size winStride = Size(),
+                        Size padding = Size(),
+                        const std::vector<Point>& searchLocations = std::vector<Point>())
+\end{lstlisting}
+参数列表：
+\begin{enumerate}
+\item[$\bullet$]\textbf{img}~~图像源文件，目前支持\textsf{CV\_8UC1}和\textsf{CV\_8UC4}格式的图像。
+\item[$\bullet$]\textbf{foundLocations}~~检测到的目标对象边界左上角点的位置。
+\item[$\bullet$]\textbf{weights}~~检测到的目标的可信度。
+\item[$\bullet$]\textbf{hitThreshold}~~SVM分类判定平面之间的距离门限。默认为0。
+\item[$\bullet$]\textbf{winStride}~~窗口步进，需要是区块步进的整数倍。
+\item[$\bullet$]\textbf{padding}~~图像边框尺寸
+\item[$\bullet$]\textbf{searchLocations}~~划窗方法当前所在位置的边界左上角点的位置
+\end{enumerate}
+程序先计算当前窗口的HOG特征描述符，然后计算距离，再与\textsf{hitThreshold}进行比较，如果大于\textsf{hitThreshold}
+则存进\textsf{foundLocations}。
+
+\textbf{HOGDescriptor::detectMultiScale}~~
+进行多尺寸窗口目标对象检测。要检测多尺寸的目标，有两种方法：一是图像尺寸不变，缩放检测窗口大小，二是检测窗口不变，
+缩放图像尺寸。
+\begin{lstlisting}[language=C++]
+HOGDescriptor::detectMultiScale(const Mat& img, CV_OUT vector<Rect>& foundLocations,
+                      CV_OUT vector<double>& foundWeights, double hitThreshold=0,
+                      Size winStride=Size(), Size padding=Size(), double scale=1.05,
+                      double finalThreshold=2.0,bool useMeanshiftGrouping = false)
+\end{lstlisting}
+与\textsf{HOGDescriptor::detect}相比增加的参数解释：
+\begin{enumerate}
+\item[$\bullet$]\textbf{scale}~~每次缩放的比例
+\item[$\bullet$]\textbf{finalThreshold}~~聚类筛选门限
+\item[$\bullet$]\textbf{useMeanshiftGrouping}~~聚类方法
+\end{enumerate}
+结合下面的源码：
+\begin{lstlisting}[language=C++]
+for( levels = 0; levels < nlevels; levels++ )
+{
+	levelScale.push_back(scale);
+    if( cvRound(imgSize.width/scale) < winSize.width ||
+        cvRound(imgSize.height/scale) < winSize.height ||
+        scale0 <= 1 )
+            break;
+        scale *= scale0;
+}
+\end{lstlisting}
+可知\textsf{HOGDescriptor::detectMultiScale}采用的是第二种方法。当图像缩小到比检测窗口小的时候就不再
+进行缩放了。
+当检测结束时，一些对象可能会被多个矩形窗口包围(检测到)，需要对这些窗口进行聚类分析。
+\begin{lstlisting}[language=C++]
+if ( useMeanshiftGrouping )
+    groupRectangles_meanshift(foundLocations, foundWeights,
+        foundScales, finalThreshold, winSize);
+else
+    groupRectangles(foundLocations, foundWeights, (int)finalThreshold, 0.2);
+\end{lstlisting}
+当\textsf{useMeanshiftGrouping}为\textsf{true}时，调用\textsf{groupRectangle\_meanshift}进行聚类，
+否则调用\textsf{groupRectangle}进行聚类(默认采用)。\textsf{groupRectangle}函数对所有输入矩形采用
+矩形相似标准(相似尺寸和位置)进行聚类，最后一个参数0.2表示聚类时的相似度判决参数。然后某些些矩形类内
+矩形数量小于等于\textsf{finalThreshold}的矩形类被排除。然后将输出存进\textsf{foundLocations}。
+
+\textbf{HOGDescriptor::compute}~~
+返回对整个图像计算得到的HOG描述符。用于分类器的训练。
+\begin{lstlisting}{language=C++}
+HOGDescriptor::compute(const Mat& img,
+                         CV_OUT vector<float>& descriptors,
+                         Size winStride=Size(), Size padding=Size(),
+                         const std::vector<Point>& locations=std::vector<Point>())
+\end{lstlisting}
+参数列表：
+\begin{enumerate}
+\item[$\bullet$]\textbf{img}~~源文件
+\item[$\bullet$]\textbf{descriptors}~~存储HOG描述符
+\end{enumerate}
+
+\subsection{训练HOG人体特征模型}
+下载$\textrm{SVM}^{light}$程序包后解压至工作目录，下面来介绍分类器的实现。
+
+\textbf{训练HOG描述符}~~
+在工作目录下设置文件夹\textsf{/pos}和\textsf{/neg}分别用于放置阳性样本和阴性样本。
+\begin{lstlisting}[language=C++]
+static string posSamplesDir = "pos/";
+static string negSamplesDir = "neg/";
+\end{lstlisting}
+程序扫描目录内的文件，需要用到Haar/AdaBoost实现部分的批量处理扩展。对于扫描到的
+每一个图像文件，计算其HOG特征描述符矢量，将计算过程封装进
+\textsf{calculateFeaturesFromInput}函数中，其函数原型为：
+\begin{lstlisting}[language=C++]
+static void calculateFeaturesFromInput(const string& imageFilename,
+                                        vector<float>& featureVector,
+                                        HOGDescriptor& hog);
+\end{lstlisting}
+接下来调用$\textrm{SVM}^{light}$，进行训练，将得到的SVM模型存储到文件。
+\begin{lstlisting}[language=C++]
+SVMlight::getInstance()->read_problem(const_cast<char*> (featuresFile.c_str()));
+SVMlight::getInstance()->train();
+SVMlight::getInstance()->saveModelToFile(svmModelFile);
+\end{lstlisting}
+根据训练得到的支持向量(仅其对检测有用，第2章)，生成单个HOG特征模型。
+\subsection{检测分类}~~进行分类时，只需要加载训练得到的特征模型，就可以进行
+目标检测。将检测过程封装进\textsf{detectTest}函数中
+\begin{lstlisting}{language=C++}
+static void detectTest(const HOGDescriptor& hog, Mat& imageData) {
+    vector<Rect> found;
+    int groupThreshold = 2;
+    Size padding(Size(32, 32));
+    Size winStride(Size(8, 8));
+    double hitThreshold = 0.; // tolerance
+    hog.detectMultiScale(imageData, found, hitThreshold, winStride, 
+                        padding, 1.05, groupThreshold);
+    showDetections(found, imageData);
+}
+\end{lstlisting}
+
+\section{STIP/SVM行为分析}
+STIP特征提取方面采用Laptev等人编写的软件包进行提取，并计算检测到的兴趣点时空域邻域的时空特征
+描述符。和\cite{ostip}采用的自适应缩放不同，使用\cite{stip}中提出的采用一系列固定大小的多尺寸
+检测，这样的简化在实际中能够减少计算复杂度并保持几乎相似的性能。
+
+特征描述符方面采用了HOG和HOF描述符，计算每一个兴趣点邻域内的特征矢量，时空域网格采用
+$3\times3\times2$的分块，HOG特征采用4-分箱，HOF特征采用5-分箱，将每个分块的特征矢量
+计算出来之后进行串联，分别形成72元和90元描述符。
+下面对STIP的参数进行解释。
+
+\textbf{输入/输出}~~对于输入视频文件，可以指定帧处理间隔，输出特征点的位置和计算出的特征矢量。
+也可以人为指定兴趣点位置，通过文本文件传递兴趣点参数，格式如下：
+\begin{lstlisting}[language=C]
+# point-type  x  y  t  sigma2  tau2  detector-confidence
+\end{lstlisting}
+\textsf{point-type}可以是任意整数，\textsf{sigma2}和\textsf{tau2}为时空域窗口尺寸参数，根据
+\cite{stip}中的方法，可取值为$sigma2=\{4,8,16,32,64,128,256,512\};tau2=\{2,4\}$。
+
+输出文件内的特征存储格式为：
+\begin{lstlisting}[language=C]
+# point-type y_norm x_norm t_norm y  x  t  sigma2  tau2  descriptor
+\end{lstlisting}
+
+\textbf{参数解释}~~
+\begin{enumerate}
+    \item[$\bullet$]\textsf{-i}~~指定输入文件，可选指定开始帧和结束帧
+    \item[$\bullet$]\textsf{-vpath}~~视频文件路径
+    \item[$\bullet$]\textsf{-ext}~~视频文件后缀，默认为\textsf{avi}
+    \item[$\bullet$]\textsf{-fpath}~~人工预指定的兴趣点描述文件
+    \item[$\bullet$]\textsf{-o}~~存储输出特征的文件名
+    \item[$\bullet$]\textsf{-det}~~特征检测方法，默认为\textsf{harris3d}\cite{ostip}
+    \item[$\bullet$]\textsf{-dscr}~~描述符类型，可选\textsf{hoghof,hog,hof}三种类型
+    \item[$\bullet$]\textsf{-vis~[yes/no]}~~开启或关闭可视化，默认开启
+    \item[$\bullet$]\textsf{-stdout~[yes/no]}~~输出为标准库支持还是OpenCV库支持，默认关闭
+\end{enumerate}
+
+根据\cite{ostip},\cite{stip}中的参数建议，我们选择时空域$3\times3\times2$网格，特征描述符采用
+HOG计算，兴趣点检测采用Harris角点检测函数扩展，这样能够得到STIP特征描述符，输出到
+\textsf{samples-stip.txt}文件。
+\begin{lstlisting}[language=bash]
+./bin/stipdet -i ./data/video-list.txt -vpath ./data/ -o ./data/samples-stip.txt 
+        -det harris3d -dscr hog
+\end{lstlisting}
+将特征描述符递交给SVM分类器进行训练，得到的模型即可用于行为分析任务。
+
+\section{行人检测结果}
+\subsection{静态图像数据集测试}
+Haar/AdaBoost架构的部分输出图像如下(INRIA Person数据集)：
+\pic[htbp]{haar/AdaBoost输出结果}{width=0.8\textwidth}{haaroutput}
+从结果可以看出，识别出了图片中的大部分人体，但是仍然存在少数不能识别的目标以及误判。另外一个
+问题是边框重叠的问题，可通过对结果进行筛选聚类来消除，这在HOG/linSVM中得到了体现。
+
+HOG/linSVM架构识别结果(采用相同的输入，用绿色框标记)：
+\pic[htbp]{HOG/linSVM输出结果}{width=0.8\textwidth}{hogoutput}
+
+在相同的输入下，HOG/linSVM的识别精度更高，但是误判率也有所提高。
+
+\section{行为分析结果}
+行为分析针对视频输入文件，经实验得到，对于较高分辨率的视频，处理速度无法达到实时处理的效果，将
+分辨率调小能够提高一定的实时性。检测效果抽样输出：
+\pic[htbp]{行为分析输出采样}{width=0.6\textwidth}{stipoutput}

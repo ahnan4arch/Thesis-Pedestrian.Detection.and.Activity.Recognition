@@ -1,0 +1,236 @@
+\chapter{行为分析}
+\section{训练样本构建}
+数据集合对分类器的性能影响很大，前文的行人检测方面目前已有比较成熟的数据集合\cite{survey}，
+但是基于视频的行为分析方面数据集合存在很大限制。现有的数据集合\cite{kth}只提供处于人工
+控制和简化的场景设定下记录的数量较少的行为类别，这和实际应用中具有丰富现实性的待处理视频
+有很大差距。本文参考\cite{stip}提出的自动标注电影行为恢复方法，从电影中采集现实
+的自然的视频行为样本。
+
+基于剧本的人类行为标注技术在本质上和近来一些采用文本信息从网络上进行自动图像采集\cite{optimol}
+以及给图像中\cite{names}和视频中\cite{buffy}的角色自动命名的工具相似。不同的是这项工作将
+采用更加精细的文本分类工具来克服文本描述的类内差异。
+
+电影里有多种类的和大量的现实人类行为，然而，往往一类行为在电影中只出现很少的次数，为了获取
+充足数量的行为样本用于视觉训练，对长时间电影片段进行标注是必要的，同时人工标注也是非常困难的
+一项任务。电影剧本在场景，角色，转录对白和人类行为等方面提供了详细的对电影内容的描述，包含有
+丰富的信息，并且许多电影的剧本是公开的。\footnote{可从\url{www.dailyscript.com},
+\url{www.movie-page.com},\url{www.weeklyscript.com}上获取。}电影剧本中包含的丰富的信息已被
+Everingham等人用于视频中的角色自动命名\cite{buffy}。这里我们扩展这种思想，应用基于文本的
+剧本搜索来自动地搜集人类行为视频样本。
+
+然而，从剧本中自动标注人类行为同样面临许多困难的问题。首先，电影剧本通常没有时间信息，所以必须要
+和电影视频进行时域对齐。其次，剧本中描述的人类行为并不是总和电影中的行为相关。最后，
+自动行为恢复必须要
+处理文本中行为的大量类内的实质性的变化。
+
+\textbf{剧本和电影行为的对齐}~~电影剧本通常是普通文本格式并且具有相似的结构。我们利用
+行缩进作为简单特征来将剧本解析为独白，角色名称和场景描述等类别。为了将剧本和电影对齐
+我们采用\cite{buffy}的方法并利用从互联网上现在的电影字幕中的时间信息。首先，我们采用
+单词匹配和动态变成对齐剧本和字幕中的对话片段。然后，将字幕中的时间信息转移到剧本中，
+并推测场景描述之间的时间间隔。如图\ref{script}所示。
+\pic[htbp]{字幕和剧本中对话片段(绿色)的对齐演示。相邻对话片段的时间信息(蓝色标记)用来
+    估计场景描述(黄色标记)的时间间隔}{width=0.8\textwidth}{script}
+
+用于行为训练和分类的视频剪辑可以采用场景描述之间的时间间隔来定义，可能包含多个行为
+或是没有行为的片段。为了表征一个由剧本和字幕的不匹配造成的可能的不对齐的情况，我们
+将每一个场景描述和分数$a$关联起来。$a$通过匹配字数$\#M$与邻接对话字数总量$\#T$的比例计算：
+\begin{equation}
+    a=\frac{\#M}{\#T}
+\end{equation}
+时域不对齐可能由剧本和字幕的不完全匹配造成。而且，完美的字幕对齐$a=1$也不能保证正确
+的标注，因为剧本和电影之间可能还有差异。
+
+\textbf{基于文本的人类行为恢复}~~文本描述的人类行为表达方式会有一些类内差异，比如
+\textit{``走出汽车''}这一行为，可能的表述有：
+\begin{enumerate}
+    \item[$\bullet$] Will gets out of the Chevrolet
+    \item[$\bullet$] A black car pulls up.Two army officers get out
+    \item[$\bullet$] Erin exits her new truck
+    \item[$\bullet$] ...
+\end{enumerate}
+并且，阳性误判不容易从阳性样本中分离出来，如\textit{``坐下''}这一行为的两种不容易
+区分的误判：
+\begin{enumerate}
+    \item[$\bullet$] About to sit down,he freezes.
+    \item[$\bullet$] He turned to sit down.But the smile dies on his face when he finds
+        his place occupied by Ellie.
+\end{enumerate}
+因此，基于文本的行为恢复并不是想象那么简单，通过简单的关键字搜索是很难解决问题的。为了
+处理人类行为的类内变化，我们采用基于机器学习的文本分类方法\cite{kth}。分类器对剧本中
+的每个场景描述进行标记-包含目标行为或没有。实现方法依赖于特征包模型\cite{bof}，每个场景描述用一个
+高维特征空间中的稀疏矢量表示。特征方面我们采用一个N个单词的窗口中的单词，邻接单词对以及
+非邻接单词对(N在2到8之间)。少于3个训练文档支持的特征被删除掉。分类方面采用和SVM等价的正
+则感知器\cite{motioncate}。分类器在人工标注的场景描述集合上进行训练，参数(正则常量，窗口
+尺寸N，判决门限)通过验证性集合进行调整。\cite{stip}报告指出文本分类器相对于简单的关键字匹配
+获得的明显性能提升。
+
+Laptev等人\cite{stip}构建了两个视频训练集合\footnote{可从\url{http://www.irisa.fr/vista/actions}
+下载。}
+(一个通过人工标注，一个自动标注)，以及一个视频
+测试集合。限定自动训练集合$a>0.5$，并将视频长度限定到1000帧以内。采用两个训练数据集，目的
+是对在监督学习设定和自动生成训练样本设定下分别进行评估。\cite{stip}指出自动化集合中正确标注
+视频的比例为$60\%$，错误标注主要来自于剧本和视频不对齐以及少部分来自于文本分类器的错误，这
+些错误造成的影响会在之后讨论。
+
+\section{STIP特征}
+本文基于已存在的用于视频描述的特征包方法\cite{webimage},\cite{objectrepresent},\cite{sstf}并
+将静态图片分类中的经验扩展到视频中。Lazabnik等人\cite{bbof}提出空域金字塔，即空域场景布局的
+粗描述法，能够提升识别性能。基于这种方法的一些成功的扩展包括单层金字塔的权重最优化\cite{spk}
+以及广义空域网格\cite{rtdv}的采用。基于这些已有的方法，Laptev等人提出了构建空域-时域网格的
+方法\cite{stip}。
+
+\textbf{空域-时域特征}~~分析和解释视频行为特征近来在计算机视觉及其应用中吸引了许多关注，相对于
+静态图像，视频包含了关于场景变化的行为特征。传统的行为特征提取方法有光流(Barron等人1994年提出)
+和特征跟踪(Smith和Brady在1995年提出)。光流法通常只能捕获低阶行为，在行为迅速变化时容易失效；而
+特征跟踪法通常假设时域上恒定的外貌特征，在外貌发生变化时性能下降。
+
+视频中的对象结构通常不是恒定的，而且视频正是因为对象结构的变化而表达出了非常丰富的信息。
+图像中局部空间和时间上像素值都有显著变化的点包含了关于行为的信息，这些点称为兴趣点。
+
+稀疏表达的空域-时域特征近来表现出在行为识别方面的良好性能\cite{sstf},
+\cite{orcc},\cite{objectrepresent},\cite{webimage}，这些方法提供了一种紧凑的视频描述并且对
+背景混杂，遮挡和尺寸变化具有耐受性。本文采用\cite{ostip}，使用Harris操作的空域-时域扩展兴趣点。
+
+
+\textbf{空域兴趣点}~~
+在空域中，我们可以用线性尺度空间表达式来对图像进行建模$f^{sp}:\mathbb{R}^2\to\mathbb{R}$，
+线性尺度空间$L^{sp}:\mathbb{R}^2\times\mathbb{R}_+\to\mathbb{R}$
+\begin{equation}
+    L^{sp}(x,y;\sigma^2_l)=g^{sp}(x,y;\sigma_l^2)*f^{sp}(x,y)
+\end{equation}
+即$f^{sp}$和高斯核函数的卷积，$*$表示卷积运算，高斯核函数：
+\begin{equation}
+    g^{sp}(x,y;\sigma_l^2)=\frac{1}{2\pi\sigma_l^2}exp(-(x^2+y^2)/2\sigma_l^2)
+\end{equation}
+Harris兴趣点检测的思想是寻找$f^{sp}$在每个方向都具有显著变化的点。给定$\sigma_l^2$，
+这样的点可以采用一个整合了$\sigma_i^2$高斯窗口的二阶矩矩阵找到：
+\begin{eqnarray}
+    \mu^{sp}(\cdot;\sigma_l^2,\sigma_i^2)&=&g^{sp}(\cdot;\sigma_i^2)*
+    ((\nabla{}L(\cdot;\sigma_l^2))(\nabla{}L(\cdot;\sigma_l^2))^T)\\
+    {}&=&g^{sp}(\cdot;\sigma_i^2)*\left(\begin{array}{cc}
+    (L_x^{sp})^2&L_x^{sp}L_y^{sp}\\
+    L_x^{sp}L_y^{sp}&(L_y^{sp})^2
+\end{array}\right)
+\end{eqnarray}
+$L_x^{sp}$和$L_y^{sp}$是在局部尺度$\sigma_l^2$上计算的高斯微分：
+\begin{equation}
+    L_x^{sp}=\partial_x(g^{sp}(\cdot;\sigma_l^2)*f^{sp}(\cdot))
+\end{equation}
+\begin{equation}
+    L_y^{sp}=\partial_y(g^{sp}(\cdot;\sigma_l^2)*f^{sp}(\cdot))
+\end{equation}
+二阶描述符可理解为点的局部邻域图像定向的二维分布的协方差矩阵，将其对角化
+处理，得到两个特征值，其不影响两个正交方向的变化分量。因此，
+$\mu^{sp}$的特征值$\lambda_1,\lambda_2,(\lambda_1\leq\lambda_2)$表征
+了$f^{sp}$在两个方向的变化。较大的$\lambda_1,\lambda_2$对应的即是兴趣点，
+即在两个垂直方向像素强度都发生显著变化的点。
+
+为了检测此类兴趣点，Harris和Stephens在1988年提出了检测角点函数的极大值，
+定义角点函数：
+\begin{eqnarray}
+    H^{sp}&=&\mathrm{det}(\mu^{sp}-k~\mathrm{trace}^2(\mu^{sp}))\\
+    {}&=&\lambda_1\lambda_2-k(\lambda_1+\lambda_2)^2
+\end{eqnarray}
+在兴趣点的位置上，特征值的比率$\alpha=\lambda_2/\lambda_1$较大(注意$\lambda_1\leq\lambda_2$)。
+对于$H^{sp}$的极大值，比率$\alpha$需要满足$k\leq\alpha/(1+\alpha)^2$，如果
+设置$k=0.25$，$H^{sp}$的正极值对应理想的各向同性的兴趣点，即
+$\alpha=1,\lambda_1=\lambda_2$，稍低的$k$能够检测出具有更高$\alpha$的
+更细长的兴趣点(在某一方向变化明显比另一个方向的变化显著)。
+常用的$k$值设定为$k=0.04$，对应于检测$\alpha<23$的兴趣点。
+
+\textbf{时空域兴趣点}~~接下来，我们将空域兴趣点扩展到时空域，思想是检测局部时空卷中在时域
+和空域都发生显著变化的点，具有此性质的点对应于特定位置的空域兴趣点在时空卷中具有非匀速运动。
+我们采用函数$f:\mathbb{R}^2\times\mathbb{R}\to\mathbb{R}$并构建其线性尺度表达式
+$L:\mathbb{R}^2\times\mathbb{R}\times\mathbb{R}^2_+\to\mathbb{R}$，即将$f$和各向异性高斯核
+作卷积运算
+\begin{equation}
+    L(\cdot;\sigma_l^2,\tau_l^2)=g(\cdot;\sigma_l^2,\tau_l^2)*f(\cdot)
+\end{equation}
+高斯核具有空域方差$\sigma_l^2$和时域方差$\tau_l^2$，时空可分高斯核定义为
+\begin{equation}
+    g(x,y,t;\sigma_l^2,\tau_l^2)=\frac{1}{\sqrt{(2\pi)^3\sigma_l^4\tau_l^2}}\times
+    exp(-(x^2+y^2)/2\sigma_l^2-t^2/2\tau_l^2)
+\end{equation}
+时域上采用可分尺度参数是必要的，因为时域和空域层面上的事件是独立的。
+与时域兴趣点处理相似，我们采用一个时空域二阶矩矩阵，即一个和高斯核相卷的$3\times3$矩阵：
+\begin{equation}
+    \mu=g(\cdot;\sigma_i^2,\tau_i^2)*\left(
+        \begin{array}{ccc}
+            L_x^2&L_xL_y&L_xL_t\\
+            L_xL_y&L_y^2&L_yL_t\\
+            L_xL_t&L_yL_t&L_t^2
+        \end{array}
+    \right)
+\end{equation}
+整合尺度$\sigma_i^2$和$\tau_i^2$通过$\sigma_i^2=s\sigma_l^2$以及
+$\tau_i^2=s\tau_l^2$和$\sigma_l^2,\tau_l^2$联系。类似地，我们检测
+$f$中具有较大特征值$\lambda_1,\lambda_2,\lambda_3$的区域，为了实现
+检测，我们扩展Harris角点方程为：
+\begin{eqnarray}
+    H=\mathrm{det}(\mu)&=&k\mathrm{trace}^3(\mu)\\
+    {}&=&\lambda_1\lambda_2\lambda_3-k(\lambda_1+\lambda_2+\lambda_3)^3
+\end{eqnarray}
+定义$\alpha=\lambda_2/\lambda_1$以及$\beta=\lambda_3/\lambda_1$并重写$H$:
+\begin{equation}
+    H=\lambda_1(\alpha\beta-k(1+\alpha+\beta)^3)
+\end{equation}
+约束$H\geq0$，可以得到$k\leq\alpha\beta/(1+\alpha+\beta)^3$
+，当$k=1/27$时$\alpha=\beta=1$，当$k$增大到充分大时，$H$的局部正极大值
+对应于像素强度在时域和空域都具有显著变化的兴趣点。如果设定$\alpha,\beta$的最大值
+为23，则$k\approx0.005$。
+图\ref{ostipdata}是\cite{ostip}给出的合成数据中得到的检测结果。
+\pic[htbp]{合成数据检测结果:(a)运动角;(b)运动球体和墙体的融合;
+(c)两个球体的碰撞,$\sigma_l^2=8,\tau_l^2=8$;(d)两个球体的碰撞;$\sigma_l^2=16,\tau_l^2=16$}
+{width=0.6\textwidth}{ostipdata}
+
+\textbf{时空尺度因子的选择}~~从图\ref{ostipdata}的(c),(d)可以看出，时空域两个尺度因子
+的不同选择对实验结果有影响。\cite{ostip}总结为：时域内尺度因子越大，表明动作发生的时间越短，
+能够优先检测出动作持续时间短的特征点；时域内尺度因子越小，则优先检测动作持续时间长的特征点。
+Laptev等人通过去归一化后的在时间尺度和空间尺度Laplace算子最大值，来检测时空域范围内事件，
+基于这种机制能够得出尺度变换无关的时空兴趣点检测算子。
+
+和\cite{ostip}不同，我们引入多尺度方法并在多层空域-时域尺寸$(\sigma_i^2,\tau_j^2)$上进
+行特征提取，$(\sigma_i^2,\tau_j^2);\sigma_i=2^{(1+i)/2},i=1,...,6;\tau_j=2^{j/2},j=1,2$。
+这样有利于减少计算复杂度并消除人工选择尺寸的痕迹。
+
+\textbf{兴趣点区域特征化}~~
+为了使局部特征的动作和外貌特征化，我们计算邻接检测点空域-时域卷的直方图描述符。每一卷的大小
+$(\Delta_x,\Delta_y,\Delta_t)$和检测尺寸相关，$\Delta_x,\Delta_y=2k\sigma,\Delta_t=2k\tau$。
+每一卷被分为一个$(n_x,n_y,n_t)$的立方体网络，对每一个立方体我们可以分别计算粗方向梯度直方图
+(HOG)和光流直方图(HOF)，然后进行标准化，再通过多列索引串联为HOG或HOF特征描述符矢量。
+
+\textbf{时空特征包}
+由于人体的外观，行为方式以及拍摄视角等存在差异，对同一类动作在不同的视频中产生的兴趣点不尽相同
+，但针对同一类动作，这些兴趣点的特征具有相似性，因此从兴趣点的特征集合中提取更高层，能够代表
+相同动作的特征模式将有助于行为分析。
+
+给定一个时空域特征集合，我们构建一个时空域特征包(BoF)，这需要通过k-means算法进行聚类，以构建
+视觉单词。BoF表达式将每一个特征分配给最近的(采用欧式距离)视觉单词，并在时空域卷上计算视觉单词
+出现次数的直方图。时空域卷的定义与时空域网格的定义有关，如果网格有多个子集，不同子集的直方图
+串联成一个特征矢量后进行标准化。
+
+空域维度方面\cite{stip}采用一个$1\times1$网格(标准BoF表达式)以及一个$2\times2$网格(表现突出)，一个水平
+$h3\times1$网格以及一个垂直$v1\times3$网格。同时，Laptev等人实现一个密集$3\times3$网格以及一个
+邻接单元$50\%$重叠的$o2\times2$网格。时域维度方面，将视频序列分为$t_1,t_2,t_3$三种分箱方式以及
+邻接单元重叠的$ot_2$分箱。和第二章中HOG描述符的重叠一样，重叠部分的网格内位于中心的特征权重更大。
+这样，6种空域网格和4种时域网格可以组合成24中可能的时空域网格。图\ref{stbin}描述了一些被证明是
+对行为识别有用的网格，每一个时空域网格使用HOG或是HOF描述符进行封装，称为通道，递交给分类器。
+\pic[htbp]{一些时空域网格示例}{width=0.8\textwidth}{stbin}
+\section{分类器}
+\cite{stip}采用非线性SVM进行分类任务，采用多通道高斯核
+\begin{equation}
+    K(H_i,H_j)=exp(-\sum_{c\in\mathcal{C}}\frac{1}{A_c}D_{\mathcal{C}}(H_i,H_j))
+\end{equation}
+$H_i=\{h_{in}\}$和$H_j=\{h_{jn}\}$是$c$通道的直方图，$\chi^2$距离$D_{\mathcal{C}}(H_i,H_j)$
+\begin{equation}
+    D_{\mathcal{C}}(H_i,H_j)=\frac{1}{2}\sum^V_{n=1}\frac{(h_{in}-h_{jn})^2}{h_{in}+h_{jn}}
+\end{equation}
+$V$视觉单词的大小。$A_{\mathcal{C}}$为$c$通道的所有训练样本之间的距离平均值。为了使SVM处理
+多类分类问题，最佳$\mathcal{C}$集合通过贪心算法进行搜索，从空集合开始对增加或删除操作进行评估
+直到达到最优化。
+
+和SVM进行二值分类不同，多类问题需要处理多个类别之间的间隔，第二章提到的最优化问题将急剧膨胀，
+计算量是不能忍受的。为了实现多类问题的求解，可以采用``一类对其余''(one-against-all)的方法，
+每次将一个类别定为正样本，将其余类别定为负样本，得到一个最优间隔分类器。比如一个5类问题，这样
+的方法最终会构建5个分类器，在需要对一未知数据进行分类的时候，需要遍历这5个分类器的结果。对于分类
+重叠问题，可以设置一个选择算法来，比如选择离超平面距离最远的一个判定作为结果。

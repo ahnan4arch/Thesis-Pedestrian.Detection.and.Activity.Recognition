@@ -1,0 +1,99 @@
+\documentclass[12pt]{beamer}
+\usetheme{Warsaw}
+\usepackage{fontspec}
+\setmainfont[Mapping=tex-text]{Times New Roman}
+\usepackage[CJKchecksingle,CJKnumber]{xeCJK}
+\setCJKmainfont[BoldFont={SimHei},
+ItalicFont={KaiTi}]{SimSun}
+\renewcommand\baselinestretch{1.2}
+\usepackage{graphicx}
+\usepackage{listings}
+\lstset{numbers=left,numbersep=4pt,
+frame=lines,framerule=1pt,basicstyle=\ttfamily\scriptsize,
+}
+\usepackage{amssymb}
+\punctstyle{plain}
+\title{人体检测及行为分析的研究}
+\author{毕业设计初期答辩}
+\date{}
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{frame}
+\frametitle{课题背景}
+\begin{block}{应用场景}
+\begin{itemize}
+\item 智能汽车
+\item 监控系统
+\item 高级机器人
+\end{itemize}
+\end{block}
+\begin{block}{研究现状}
+\begin{itemize}
+\item 理论方面：大量特征，模型，泛型架构
+\item 实验方面：性能差异大，缺乏基准参考
+\end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}
+\frametitle{人体检测}
+\begin{block}{典型架构}
+\begin{itemize}
+\item 基于Haar小波特征的AdaBoost级联器
+\item HOG/linSVM(方向梯度直方图/线性支持向量机)
+\item NN/LRF(神经网络/局部感知域特征)
+\item 联合形状-纹理检测器
+\end{itemize}
+\end{block}
+\begin{block}{性能评测}
+\begin{itemize}
+\item 小分辨率/(接近于)实时处理：Haar/AdaBoost最优
+\item 高分辨率/低处理速度：HOG/linSVM最优
+\end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}
+\frametitle{行为分析}
+\begin{block}{行为描述}
+\begin{itemize}
+\item 底层图像信息：快速鲁棒，简单行为
+\item 高层人体结构：精细复杂，复杂行为
+\end{itemize}
+\end{block}
+\begin{block}{行为理解}
+\begin{itemize}
+\item 模板匹配算法：计算量少，对时间间隔敏感
+\item 状态空间算法：模型复杂，屏蔽时域建模问题
+\end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}
+\frametitle{技术路线}
+\begin{block}{参考文献}
+\begin{itemize}
+\item Monocular Pedestrian Detection:Survey and Experiment
+\item OpenCV文档
+\item ...
+\end{itemize}
+\end{block}
+\begin{block}{编程工具}
+\begin{itemize}
+\item OpenCV开源视觉运算库
+\item Matlab
+\end{itemize}
+\end{block}
+\begin{block}{创新点}
+针对预处理模块改进算法性能
+\end{block}
+\end{frame}
+
+\begin{frame}
+
+\end{frame}
+\end{document}

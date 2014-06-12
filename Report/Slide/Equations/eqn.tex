@@ -1,0 +1,76 @@
+%========================================================================
+%   FileName: eqn.tex
+%     Author: GuanHWang
+%      Email: GuanHWang2011@gmail.com
+% LastChange: 2014-04-23 18:01:41
+%========================================================================
+\documentclass[10pt,technote]{article}
+\usepackage[CJKchecksingle,CJKnumber]{xeCJK}
+\setCJKmainfont[BoldFont={SimHei},
+ItalicFont={KaiTi}]{SimSun}
+\renewcommand\baselinestretch{1.2}
+\usepackage{graphicx}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{listings}
+\lstset{numbers=left,numbersep=4pt,
+frame=lines,framerule=1pt,basicstyle=\ttfamily\scriptsize,
+}
+\usepackage[bookmarksnumbered, pdfencoding=auto, 
+breaklinks, colorlinks, linkcolor=red, urlcolor=ForestGreen, citecolor=magenta]{hyperref}
+\usepackage{cite}
+\usepackage{stfloats}
+\usepackage{amssymb}
+\punctstyle{plain}
+\begin{document}
+\section{haar}
+\[v=\sum{LightArea}-\sum{DarkArea}\]
+设$X(m,n)$为图像中的一个像素值，$L(X)$为X点所在的行从左端到X扫过的像素和，$I(X)$为X点和原点组成的矩形内的像素值和。
+\[L(X)=\sum_{j=1}^{j=n}P(m,j)\]
+\[I(X)=L(X)+L(m-1,n)\]
+则图中所示的矩形ABCD的像素和为：
+\[\sum=I(C)+I(A)-I(B)-I(D)\]
+
+\section{adaboost}
+给定:$(x_1,y_1),...,(x_m,y_m)$其中$x_i\in{}X,y_i\in{}Y={-1,+1}$
+\\初始化$D_1(i)=1/m.$
+从$t=1$到$t=T$:
+\begin{enumerate}
+		\item使用分布$D_t$训练弱分类器
+		\item获取弱假设$h_t：X\to{-1,+1}$，误差为$\epsilon_t=Pr_{i\sim{}D_t}[h_t(x_i)\neq{}y_i]$
+		\item选择$\alpha_t=\frac{1}{2}ln\left(\frac{1-\epsilon_t}{\epsilon_t}\right)$
+		\item更新权重：
+				\begin{displaymath}
+						D_{t+1}(i)=\frac{D_t(i)}{Z_t}\times\left\{\begin{array}{ll}
+										e^{-\alpha_t}&if h_t(x_i)=y_i\\
+										 e^{\alpha_t}&if h_t(x_i)\neq{}y_i
+						\end{array}\right\}
+				\end{displaymath}
+				$Z_t$为归一化因子。
+		\item输出最终假设:$H(x)=sign\left(\sum^T_{t=1}\alpha_th_t(x)\right)$
+\end{enumerate}
+\newpage
+\section{hog}
+设$v$为未标准化的区块梯度矢量，$||v||_k(k=1,2)$是$v$的k-范
+数(norm),$e$是一个很小的常数(具体值并不重要)，四种标准化算法如下：
+\[L2-norm:f=\frac{v}{\sqrt{||v||^2_2+e^2}}\]
+\[L2-Hys\]
+\[L1-norm:f=\frac{v}{(||v||_1+e)}\]
+\[L1-sqrt:f=\sqrt{\frac{v}{(||v||_1+e)}}\]
+L2-Hys是在L2-norm后进行截断，然后重新进行标准化。
+
+Dalal和Triggs发现L2-Hys,L2-norm,L1-sqrt性能相似，L1-norm性能稍有下降，但
+都相对于未标准化的梯度矢量有明显的性能提升。
+\section{haaropencv}
+在$18\times36$
+阳性样本分辨率下,配置15层级联,采用所有Haar特征,单层在15660个阳性样本和15660个阴
+性样本下训练,选定单级50\%的误判率和99.5\%的检测率
+,运行时特征值缓存区和特征值索引缓存区大小设置为1024MB和1024MB,命令如下:
+\begin{lstlisting}[language=bash]
+opencv_traincascade -data classifier -vec positives.vec\
+  -bg negatives.txt -numStages 15 -minHitRate 0.995\ 
+  -maxFalseAlarmRate 0.5 -numPos 15660 -numNeg 15660\ 
+  -w 18 -h 36 -mode ALL -precalcValBufSize 1024\
+  -precalcIdxBufSize 1024
+\end{lstlisting}
+\end{document}
+

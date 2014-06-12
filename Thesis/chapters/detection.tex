@@ -1,0 +1,683 @@
+\chapter{人体检测}
+\fuhao{$\langle{}w,x\rangle$}{内积运算}{inner}
+\fuhao{$||v||_k$}{k-范数}{norm}
+\section{代表性算法}
+根据\cite{survey}的报告指出，在人体检测方面，Haar/AdaBoost\cite{haar}在(接近于)实时处理速度
+限制和低分辨率图像条件下表现突出，而HOG/linSVM\cite{DT2005}在低处理速度限制和中等分辨率图像
+条件下性能获得明显提升。本章将着重研究以上两种架构在人体检测方面的基本原理和应用，结构上分
+为特征描述算法和分类算法两部分来分别进行阐述。
+\section{特征}
+\subsection{Haar特征}
+早期图像描述采用了图像每一个像素点的强度，这种方法的明显缺点是计算消耗很大。Papageorgiou等人
+提出可以采用基于Haar小波的特征来在区域上进行操作\cite{haarorigin1},Paul Viola等人随后提出了
+Haar特征\cite{haarorigin}，由于其快速性和简洁性，Haar特征迅速得到许多改进，Lienhart
+等人扩展了这个集合\cite{haarextend}，加入了倾斜的和中心环绕的特征子集，形成了一个过完备的特
+征字典(如图\ref{haarfeature}所示)，包含了水平方向和垂直方向以及相应的倾斜的特征。
+
+\pic[htbp]{Haar小波特征。(a)-(d):边缘特征；(e)-(h):线特征；(i)-(j):角特征；(k)-(l):中心包围
+特征}{width=0.6\textwidth}{haarfeature}
+
+图\ref{haarfeature}中白色区域表示正区域$L$，黑色部分表示负区域$D$。某一区域上的特征值$v$
+通过如下方式计算：
+\begin{equation}
+    v=\sum{}L-\sum{}D
+\end{equation}
+
+图像中目标区域所具有的相似的统计特性经验性地表明这种特征计算方式能够比较好地描述目标特征
+(实际上是一个弱分类器)。但是简单地在图像上进行特征计算，如此多的特征数量势必会带来计算消耗
+的问题。Viola等人采用积分图很好地加速了计算过程。积分图最早由Crow在1984年提出\cite{summedarea}。
+
+\pic[htbp]{Haar特征的积分图加速计算}{width=0.8\textwidth}{integral}
+
+如图\ref{integral}所示，设$X(m,n)$为图像中的一个像素值，$L(X)$为$X$点所在的行从左端到$X$点
+扫过的像素值和，$I(X)$为$X$点和原点为对角点确定的矩形区域内的像素值和，使用$P(i,j)$表示位于
+坐标$(i,j)$处的像素值。
+\begin{equation}
+    L(X)=\sum^{j=n}_{j=1}P(m,j)
+\end{equation}
+\begin{equation}
+    I(X)=L(X)+L(m-1,n)
+\end{equation}
+则图\ref{integral}中所示矩形$ABCD$的像素和为：
+\begin{equation}
+    \sum=I(C)+I(A)-I(B)-I(D)
+\end{equation}
+这样只需对图像中的像素值进行一次扫描，即可计算出所有需要的特征值。这是一种在线算法，
+且对任何一个特征值的计算只需要常数时间。针对Lienhart提出的倾斜的Haar特征，只需要引入
+倾斜的积分图进行扩展即可。
+
+Haar小波特征提供了一种高效的划窗算法扩展，每一个特征可以描述图像上特定特性的存在或者
+不存在，比如边缘或者纹理的变化。这样的一个Haar特征是一个弱分类器，其检测正确率比随机
+猜测强一些，但不足以用于鲁棒地人体检测系统。稍后将介绍AdaBoost算法以及Viola-Jones目标
+检测框架，引入复杂度递增的退化决策树，形成一个强分类器。
+\subsection{HOG特征}
+HOG特征描述符由法国国家计算机技术和控制研究所的Dalal和Triggs提出\cite{DT2005},其思想
+是一幅图像中的局部对象的外貌和形状可以被像素强度梯度或边缘的方向分布很好地描述。将图像
+划分为邻接的图像子区，称为胞元(cell)，然后对胞元内的每一个像素计算方向梯度直方图，最后将
+这些直方图联合起来形成最终特征描述符。
+
+\pic[htbp]{图像子区：胞元}{width=0.8\textwidth}{histo}
+
+\textbf{梯度矢量(gradient vector)}~~梯度矢量是计算机视觉中的一个重要概念，许多视觉算法
+都需要引入对图像中每一个像素的梯度矢量的计算。如下图所示的$3\times3$灰度图像(图\ref{histo}
+中的一个胞元)，相应的像素标记字母作为标号。
+
+\pic[htbp]{梯度矢量计算演示}{width=0.4\textwidth}{gradient}
+
+像素值在$0-255$之间，$0$表示黑色，$255$表示白色。$R-L$称为$x$方向变化率。需要注意
+的是，图中L像素的灰度值比R像素灰度值高，这样计算出来会是负值，$L-R$则是正值，也称
+为$x$方向变化率，但是一副图像中的计算方法应当保持一致。类似的，$U-D$称为$y$方向
+变化率。两个方向的变化率取值在$-255\to255$之间，编程实现上不能用一个字节存储，可以映射
+到$0\to255$之间，这样，如果将变化率用灰度值表示，则非常大的负变化率将映射为黑色，
+非常大的正变化率将映射为白色。同时，我们可以得到一个梯度矢量$[R-L,U-D]$，其幅
+度(magnitude)和相角(angle)计算方法如下：
+\begin{equation}
+Magnitude=\sqrt{(R-L)^2+(U-D)^2}
+\end{equation}
+\begin{equation}
+Angle=arctan\left(\frac{R-L}{U-D}\right)
+\end{equation}
+
+如果采用带符号梯度($-255\to255$)，相角会分布在$0^\circ\to360^\circ$之间，如果采
+用无符号梯度(映射到$0\to255$)，相角分布在$0^\circ\to180^\circ$之间。Dalal和Triggs发
+现使用无符号梯度在行人检测中表现更优\cite{DT2005}。
+
+梯度矢量很好地提取了边缘信息。另一方面，试想将图像的明亮度提升，即将图像中每个像素
+值加上同一个常数，重新计算梯度矢量会发现和明亮度变换之前的梯度矢量一致，这种性质使
+得梯度矢量可以被应用到特征提取中，即本文的人体特征提取中。
+
+\textbf{方向梯度直方图(Histogram of oriented gradient)}~~如下图的一个包含行人的图像，
+红色框标记一个$8\times8$胞元，这些$8\times8$的胞元将被用来计算HOG描述符。
+
+\pic[htbp]{密集胞元划窗}{width=0.3\textwidth}{hogdemo}
+
+在每个胞元中，我们在每个像素上计算梯度矢量，将得到64个梯度矢量，梯度矢量相角在
+$0^\circ\to180^\circ$之间分布，我们对相角进行分箱(bin)，每箱$20^\circ$，一共9
+箱(\cite{DT2005}建议的最佳参数)。具有某一相角的梯度矢量的幅度按照权重分配给
+直方图。这涉及到权重投票表决机制，Dalal和Triggs发现，采用梯度幅度进行分配表现
+最佳。例如，一个具有85度相角的梯度矢量将其幅度的1/4分配给中心为$70^\circ$的箱
+，将剩余的3/4幅度分配给中心为$90^\circ$的箱。这样就得到了下面的方向梯度直方图。
+
+\pic[htbp]{方向梯度直方图}{width=0.6\textwidth}{hog-2}
+
+上面分配幅度的方法可以减少恰好位于两箱边界的梯度矢量的影响，否则，如果一个强
+梯度矢量恰好在边界上，其相角的一个很小的扰动都将对直方图造成非常大的影响。同
+时，在计算出梯度后进行高斯平滑，也可以缓解这种影响。另一方面，特征的复杂程度
+对分类器的影响很大。通过直方图的构造，我们将特征\textit{[64个二元矢量]}量化为
+特征\textit{[9个值]}，很好地压缩了特征的同时保留了胞元的信息。设想对图像加上
+一些失真，对方向梯度直方图的扰动也不会太剧烈，这是HOG特征的优点。
+
+前面提到，对图像所有像素进行加减后梯度矢量不变，接下来引入梯度矢量的标准化，
+使得其在像素值进行乘法运算后仍然保持不变。如果对胞元内的像素值都乘以某一常数
+，梯度矢量的幅度明显会发生变化，幅度会增加常数因子,相角保持不变，这会造成整
+个直方图的每个箱的幅度增加常数因子。为了解决这个问题，需要引入梯度矢量标准化
+，一种简单的标准化方法是将梯度矢量除以其幅度，梯度矢量的幅度将保持1，但是其
+相角不会发生变化。引入梯度矢量标准化以后，直方图各箱幅度在图像像素值整体乘
+以某个因子(变化对比度)时不会发生变化。
+
+除了对每个胞元的直方图进行标准化外，另外一种方法是将固定数量的空域邻接的胞
+元封装成区块(block)，然后在区块上进行标准化。Dalal和Triggs使用$2\times2$区块(50\%重叠)
+，即$16\times16$像素(如图\ref{cell}所示)。将一个区块内的四个胞元的直方图信息整合为36个值的特
+征($9\times4$),然后对这个36元矢量进行标准化。
+
+\pic[htbp]{重叠区块}{width=0.5\textwidth}{cell}
+
+Dalal和Triggs在重叠区块设定下考察了四种不同的
+区块标准化算法，设$v$为未标准化的区块梯度矢量，\gls{norm}$(k=1,2)$是$v$的k-范
+数(norm),$e$是一个很小的常数(具体值并不重要)，其中三种标准化算法如下：
+\begin{equation}
+L2-norm:f=\frac{v}{\sqrt{||v||^2_2+e^2}}
+\end{equation}
+\begin{equation}
+L1-norm:f=\frac{v}{(||v||_1+e)}
+\end{equation}
+\begin{equation}
+L1-sqrt:f=\sqrt{\frac{v}{(||v||_1+e)}}
+\end{equation}
+另外一种标准化算法\textit{L2-Hys}是在\textit{L2-norm}后进行截断，
+然后重新进行标准化。Dalal和Triggs发现\textit{L2-Hys},\textit{L2-norm},
+\textit{L1-sqrt}性能相似，\textit{L1-norm}性能稍有下降，但都相对于
+未标准化的梯度矢量有明显的性能提升。
+
+区块重叠的影响是使得每个胞元会在最终得到的HOG描述符中其作用的次数
+大于1次(角胞元出现1次，边胞元出现2次，其它胞元出现4次)，但每次出现
+都在不同的区块进行重叠区块标准化。在划窗方法中定义一个区块位移的步
+长为8像素，则可以实现50\%的重叠。
+
+如果检测器窗口为$64\time128$像素，则会被分为$7\times15$区块，每个区块
+包括$2\times2$个胞元，每个胞元包括$8\times8$像素，每个区块进行9箱直
+方图统计(36值)，最后的总特征矢量将有$7\times15\times4\times9=3780$个特征值元素。
+将HOG特征描述符递交给分类器进行训练，则可以实现特定的分类任务。
+\section{分类器}
+\subsection{AdaBoost级联器}
+Valiant在1984年提出PAC(Probably Approximately Correct)可学习性，
+他认为``学习''是模式明显清晰或模式不存在时仍能获取知识的一种过程，并给出了一个从
+计算角度来获得这种过程的方法。PAC学习的实质是在样本训练的基础上，使学习算法的输出
+以概率接近未知的目标概念。PAC学习模型综合考察样本复杂度和计算复杂度将``学习''定义为
+形式化的概率理论。PAC学习模型涉及到两个重要的概念：\textit{弱学习}和\textit{强学习}。
+识别错误率小于$\frac{1}{2}$，准确率仅比随机猜测略高的学习称为\textit{弱学习}，
+识别准确率很高并能在多项式时间内完成的学习称为\textit{强学习}。Valiant和Kearns
+提出了PAC学习模型中弱学习算法和强学习算法的等价性问题：\textit{任意给定仅比随机猜测
+略好的弱学习算法，是否可以将其提升为强学习算法？}
+
+基于PAC学习模型的理论分析，Schapire提出了Boosting算法\cite{boosting}，对等价性问题
+做出了证明。Boosting算法的主要流程如下：
+\begin{enumerate}
+\item 从样本整体集合$D$中，不放回地随即抽样$n_1<n$个样本，得到集合$D_1$，训练弱分类器$C_1$
+\item 从样本整体集合$D$中，抽取$n_2<n$个样本，其中合并进一半被$C_1$分类错误的样本，得到
+    样本集合$D_2$，训练弱分类器$C_2$
+\item 抽取$D$样本集合中，$C_1$和$C_2$分类不一致样本，组成$D_3$，训练弱分类器$C_3$
+\item 用三个弱分类器进行投票表决，得到最后分类结果
+\end{enumerate}
+
+但是，这种算法存在实践上的缺陷，那就是都要求实现知道弱学习算法学习正确的下限即弱分类器
+的误差，另外Boosting算法可能会产生少数特别难区分的样本，导致不稳定问题。1995年，
+Freund和Schapire改进了Boosting算法，提出了AdaBoost(Adaptive Boosting)算法\cite{adaboost}
+，在效率几乎一样的情况下可以应用到实际问题中。
+
+\textbf{AdaBoost算法}~~给定样本集合:
+$(x_1,y_1),...,(x_m,y_m);x_i\in{}X,y_i\in{}Y,y_i\in{}Y={-1,+1}$，初始化权重分布$D_1(i)=1/m$，
+$\sum{}d(x_i)=1$，其算法流程如下，对$t=1,...,T$：
+\begin{enumerate}
+\item 使用权重分布$D_t$训练最优弱分类器
+\item 获取弱假设$h_t:X\to{-1,+1}$，错误率\[\epsilon=Pr_{i\sim{}D_t}[h_t(x_i)\neq{}y_i]\]
+    由于弱分类器比随机猜测略强，我们期望$\epsilon_t<1/2$
+\item 选取\[\alpha_t=\frac{1}{2}ln\left(\frac{1-\epsilon_t}{\epsilon_t}\right)\]
+    因为弱分类器的错误率$\epsilon<0.5$，则有$(1-\epsilon_t)/\epsilon_t>1\Rightarrow\alpha_t>0$,
+\item 更新权重:
+    \begin{eqnarray*}
+        D_{t+1}(i)&=&\frac{D_t(i)}{Z_t}\times\left\{\begin{array}{ll}
+            e^{-\alpha_t}&if~h_t(x_i)=y_i\\
+            e^{\alpha_t}&if~h_t(x_i)\neq{}y_i
+    \end{array}\right.\\
+    {}&=&\frac{D_t(i)exp(-\alpha_ty_ih_t(x_i))}{Z_t}
+\end{eqnarray*}
+$Z_t$为标准化因子。$\epsilon_t$越小，$\alpha_t$越大，弱分类器$h_t(x)$权重越大。
+\end{enumerate}
+
+最后输出最终假设\[H(x)=sign\left(\sum_{t=1}^T\alpha_th_t(x)\right)\]
+
+从算法流程可以看出，AdaBoost算法具有一些特点：
+\begin{enumerate}
+\item[$\bullet$] 每次迭代改变的是样本的分布，而不是重复采样
+\item[$\bullet$] 样本分布的改变取决于样本是否被正确分类，分类错误的样本权值高
+\item[$\bullet$] 最终的结果是弱分类器的加权组合，权值表示弱分类器性能
+\end{enumerate}
+
+下面给出AdaBoost算法流程的可视化说明:\footnote{演示来自于Freund和Schapire写的
+``\textbf{A Tutorial on Boosting}''，\url{http://www.research.att.com/yoav}。}
+初始训练集合如下，所有训练样本权重相等。
+\pic[htbp]{初始训练集合}{width=0.3\textwidth}{demoada1}
+
+每次训练迭代根据错误率，得到新样本分布$D_{t+1}$以及该轮迭代获得的分类
+器$h_t(x)$。圆圈标注表示误分类后权重增大，表示为新分布中较大的样本。
+\pic[htbp]{第1,2次训练}{width=0.4\textwidth}{demoada2}
+
+选择级联层数为3。
+\pic[htbp]{第3次训练}{width=0.3\textwidth}{demoada4}
+
+经过上一次迭代后可获得最终分类器：
+\pic[htbp]{生成最终分类器}{width=0.5\textwidth}{demoada3}
+
+可以证明，AdaBoost算法随着迭代次数的增加，错误率上界会逐渐下降，另外即使训练次数
+很多，也不会出现过拟合的问题。Viola-Jones级联器框架利用AdaBoost的这些特性，训练
+复杂度递增的目标检测系统\cite{haar}，在每一个级联层，AdaBoost算法被用于构建一个
+基于已选特征加权线性组合的分类器，使得包含人体和非人体样本的训练集合具有最低错误率。
+由于图像中大多数检测窗口都是非人体对象，级联器被调准来尽早地检测出所有行人的同时
+排除非行人。由于前级的级联层快速排除非行人实例的过程中通常只有一小部分特征评估是必要
+的，这有助于级联器方法的快速性。
+
+\subsection{支持向量机(SVM)}
+支持向量机(SVM)是90年代中期发展起来的基于统计学习理论的一种机器学习方法，通过寻求结构化
+风险最小来提高学习机泛化能力，实现经验风险和置信范围的最小化，从而达到在统计样本量较少
+的情况下，亦能获得良好统计规律的目的。SVM最初由Vapnik提出，后来Cortes和Vapnik在1993提出
+了改进版本(软边界)并在1995年发表文章\cite{svmorigin}进行了理论阐述。SVM从提出至今，在人体
+检测及行为分析系统中得到了许多应用\cite{kth},\cite{DT2005},\cite{stip}。
+
+支持向量机涉及到比较多的统计和优化理论，理解起来比较困难，本节将从线性分类器(感知机)出发
+逐步解释其原理。\footnote{本节的介绍思路和许多数学证明来自于斯坦福大学Andrew Ng讲授的CS22
+9机器学习课程主页：\url{http://cs229.stanford.edu/},以及卡耐基梅隆大学Alex Smola讲授的机器学习
+导论课程主页:\url{http://alex.smola.org/teaching/cmu2013-10-701/}}
+
+\textbf{线性分类器(感知机)}~~SVM实际上是一种感知机扩展。以二值分类器作为讨论对象，对于训练样本
+$X_i=(x_{i1},x_{i2},...,x_{in}),Y_i=y_i,y_i\in\{-1,+1\},i=1,...,l$，$X_i$为分类对象的特征向量，
+如前文介绍的HOG特征描述符矢量，$Y_i$表征对象所属的类别。为了提高可视化程度可将特征向量用数据点
+来表示，如图\ref{svm1}所示。
+
+\pic[htbp]{数据点的可视化表示}{width=0.8\textwidth}{svm1}
+
+线性分类器需要在数据空间中寻找一个超平面(二维特征空间中表示为一条直线)，其方程可以表示为：
+\begin{equation}
+    f(x)=\langle{}w,x\rangle+b
+\end{equation}
+其中$w$称为权值矢量，$b$为偏置量，\gls{inner}为内积运算。如图\ref{svm2}中的直线表示可能的线性分类器。
+
+\pic[htbp]{可能的线性分类器}{width=0.6\textwidth}{svm2}
+
+\textbf{Logistic回归}~~Logistic回归的目的是从特征学习出一个0-1分类模型，这个模型
+将样本特征的线性组合$\theta^Tx$作为自变量，由于自变量的取值范围是$-\infty\to+\infty$，需要
+使用Logistic函数将自变量映射到区间$(0,1)$上，映射后的值被认为是判定为$y=1$的概率。
+可形式化表示为假设函数:
+\begin{equation}
+    h_\theta(x)=g(\theta^Tx)
+\end{equation}
+$x$是特征向量，函数$g$称为Logistic函数。为增加可视化程度，对于一元变量，
+$g(z)=\frac{1}{1+e^{-z}}$的函数图像：
+\pic[htbp]{Logistic函数}{width=0.4\textwidth}{svm3}
+
+从图\ref{svm3}可以看到，$g(\cdot)$将$(-\infty,+\infty)$映射到了$(0,1)$，给定$x$，
+其判定概率为
+\begin{equation}
+    Pr\{y=1|x;\theta\}=h_\theta(x)
+\end{equation}
+\begin{equation}
+    Pr\{y=0|x;\theta\}=1-h_\theta(x)
+\end{equation}
+我们可对输入$x$预测一个输出$y=1$如果$h_\theta(x)\geq0.5$，或等价地，$\theta^Tx\geq0$。
+考察一个阳性训练样本($y=1$)，$\theta^Tx$越大，$h_\theta(x)$越大，给样本判定$y=1$的可信度
+越高，则若是$\theta^Tx\gg0$我们能以非常高的可信度判定$y=1$。类似的，当$\theta^Tx\ll0$时
+我们可判定$y=0$。对于一个训练样本，我们期望找到最佳的$\theta$参数使得对于$y_i=1$的
+样本$\theta^Tx_i\gg0$，以及对于$y_i=0$的样本$\theta^Tx_i\ll0$，因为这样能够反映
+对训练集合中的样本数据非常好的拟合。
+
+在SVM的讨论方面，我们采用$y\in\{-1,1\}$来标注分类标签，用$w,b$来替代$\theta$参数，
+将分类器表示为
+\begin{equation}
+    h_{w,b}(x)=g(\langle{}w,x\rangle+b)
+\end{equation}
+这里
+\begin{equation}
+g(z)=\left\{\begin{array}{ll}
+    1&if~z\geq0\\
+    -1&otherwise
+    \end{array}\right.
+\end{equation}
+参数$w,b$表示可以显式地处理$b$参数，令$x_0=1$(即对输入特征矢量增加一个维度)来将
+$\theta^Tx$表示为$\langle{}w,x\rangle+b$，即$b$取代$\theta_0$，$w$取代
+$[\theta_1,...,\theta_n]^T$。
+
+\textbf{结构风险及泛化误差界}~~对一个分类器的性能评价分为两部分：
+\begin{enumerate}
+    \item[$\bullet$] \textbf{经验风险}:表征分类器在给定训练样本上的误差
+    \item[$\bullet$] \textbf{结构风险}:表征对未知对象分类结果可信度，体现泛化能力
+\end{enumerate}
+
+这两者是相互制约的，若是经验风险很小，可能会产生过拟合状态，未知样本与训练样本
+的微小差异都会导致分类错误，即其泛化能力很差。相反，设想结构风险很小，则可能导致
+分类器将待分类的样本误判。
+泛化误差界可以综合表征经验风险和结构化风险，可以表示对分类器经验风险和结构化风险
+之间的权衡。泛化误差界是由分类器的参数(即$w,b$)唯一确定的，接下
+来的问题是如何通过最优化$w,b$参数来最优化泛化误差界。在SVM中，通常能做到经验风险
+接近于0，则参数最优化的目的即是最小化结构化风险。
+我们再次给出线性分类器的一种演示
+\pic[htbp]{最佳参数的经验性演示}{width=0.4\textwidth}{svm4}
+
+图\ref{svm4}中$\langle{}w,x\rangle+b=0$表示判决边界(超平面)，比较理想的分类效果是
+\begin{equation}
+    y=1\forall\langle{}w,x\rangle+b>0
+\end{equation}
+\begin{equation}
+    y=0\forall\langle{}w,x\rangle+b<0
+\end{equation}
+如何确定$w,b$呢？我们经验性地指出通过寻找两条边界端直线之间实现最大间隔，即最大间隔
+分类器。在给出证明之前，我们先给出函数间隔与几何间隔的定义。
+
+\textbf{函数间隔与几何间隔}~~给定训练集合$S=\{(x_i,y_i);i=1,...,m\}$，定义$(w,b)$关于
+某个训练样本的函数间隔为
+\begin{equation}
+    \hat{\gamma}_i=y_i(\langle{}w,x\rangle+b)
+\end{equation}
+定义$(w,b)$关于训练集合$S$的函数间隔为
+\begin{equation}
+    \hat{\gamma}=\min_{i=1,...,m}\hat{\gamma}_i
+\end{equation}
+
+一个较大的函数间隔($y_i(\langle{}w,x\rangle+b)>0$)表征可信度高或是正确的判决预测。
+则函数间隔在某种程度上可以衡量分类器的性能。但是，设想将原有的$(w,b)$扩大为$(2w,2b)$
+,这并不会改变分类器$h_{w,b}(x)$(仅取决于符号而与幅度无关)，但是函数间隔会扩大为
+原来的2倍，这说明采用函数间隔不适合用于$(w,b)$的最优化衡量。这种情况下需要引入标准化
+方法。考察图\ref{margin}
+
+\pic[htbp]{几何间隔演示}{width=0.4\textwidth}{margin}
+判决边界$\langle{}w,x\rangle+b=0$以及法向量$w$如图\ref{margin}中所示，$w$与分类超平面
+垂直，样本点$A(x_i)$的位置在图中给出，设其正确分类$y=1$，$A$点距判决边界的距离由线段$AB$
+确定，即$\gamma_i$。$B$点可由$x_i$($A$点)和$w$确定，即：$x_i-\gamma_i\cdot{}w/||w||$。
+同时，$B$点在判决边界上，判决边界上的所有点$x$满足$\langle{}w,x\rangle+b=0$，则
+\begin{equation}
+    \left\langle{}w,x_i-\gamma_i\frac{w}{||w||}\right\rangle+b=0
+\end{equation}
+可解得
+\begin{equation}
+    \gamma_i=\frac{\langle{}w,x_i\rangle+b}{||w||}=\left\langle\frac{w}{||w||},x_i\right\rangle
+    +\frac{b}{||w||}
+\end{equation}
+更一般地，推广到适合阳性样本和阴性样本的表达式
+\begin{equation}
+    \gamma_i=y_i\left(\left\langle\frac{w}{||w||},x_i\right\rangle
+    +\frac{b}{||w||}\right)=y_i\frac{\langle{}w,x_i\rangle+b}{||w||}
+\end{equation}
+$\gamma_i$称为关于样本的几何间隔。注意到如果$||w||=1$，则函数间隔和几何间隔相等。几何间隔
+独立于参数的尺度变化，即如果替换$(w,b)$为$(2w,2b)$，几何间隔并不会变化。与函数
+间隔的定义相似，对训练集合$S=\{(x_i,y_i);i=1,...,m\}$，定义$(w,b)$关于训练集合S
+的几何间隔为
+\begin{equation}
+    \gamma=\min_{i=1,...,m}\gamma_i
+\end{equation}
+
+\textbf{最大间隔分类器}~~经过前面的讨论，我们提出最优化问题：
+\begin{equation}
+    \max_{\gamma,w,b}\gamma~~s.t.~~y_i(\langle{}w,x_i\rangle+b)\geq\gamma,i=1,...,m
+    ~~||w||=1.
+\end{equation}
+即在满足每一个训练样本的函数间隔($\hat{\gamma}_i$)都至少是$\gamma$的条件下
+寻找最大的$\gamma$。$||w||=1$的限制保证函数间隔和几何间隔相等，这样每一个训练样本的
+几何间隔(对最优化有意义的)同样也至少是$\gamma$,即最优化问题的目的是求出具有最大几何间隔
+的$(w,b)$参数。因为有附加条件$||w||=1$的存在，原始最优化问题并不容易直接求解。注意
+到函数间隔与几何间隔之间的关系：
+\begin{equation}
+    \gamma=\hat{\gamma}/||w||
+\end{equation}
+我们可以将最优化问题转化为等价的：
+\begin{equation}
+    \max_{\gamma,w,b}\frac{\hat{\gamma}}{||w||}~~s.t.~~y_i(\langle{}w,x\rangle+b)\geq
+    \hat{\gamma},~~i=1,...,m
+\end{equation}
+为了进一步地求解，引入缩放限制：
+\begin{equation}
+    \hat{\gamma}=1
+\end{equation}
+即关于训练集合的函数间隔限定为1。因为$(w,b)$参数同时乘以一个尺度因子后函数间隔
+同时变化一个尺度因子，则实际上是对函数间隔进行缩放后$(w,b)$参数相应地变化一个尺
+度因子以寻求等效，而几何间隔对$(w,b)$的缩放是独立的，故这样的限定并不影响最优化
+问题的求解。进一步地，可以发现最大化$\hat{\gamma}/||w||=1/||w||$和最小化$||w||^2$
+是等效的，可以得出如下的等效最优化问题：
+\begin{equation}
+    \min_{\gamma,w,b}\frac{1}{2}||w||^2~~s.t.~~y_i(\langle{}w,x_i\rangle+b)\geq1,~i=1,...,m
+\end{equation}
+此时，最优化问题实际上是一个凸优化问题，可以使用现有的二次规划(QP)程序进行求解。
+
+然而，以上的讨论都是针对线性可分的数据进行的，对于线性不可分的数据，最优化问题根本不存在
+最优解，这也是线性分类器的瓶颈。为了解决线性分类器遇到的限制，引入了核函数。在了解核函数
+之前需要引入Lagrange对偶性问题，同时能获取一个比使用普通QP进行最优化更加高效的最优化求解
+方法。
+
+\textbf{Lagrange对偶性}
+考察下面的最优化问题：
+\begin{equation}
+    \min_w~f(w)~~s.t.~~h_i(w)=0,~i=1,...,l
+\end{equation}
+在$f(w)$为二次函数且约束条件为线性约束的时候，称为凸优化问题，可采用Lagrange算法求解。
+定义Lagrange函数为
+\begin{equation}
+    \mathcal{L}(w,\beta)=f(w)+\sum^l_{i=1}\beta_ih_i(w)
+\end{equation}
+$\beta_i$称为Lagrange乘子。令
+\begin{equation}
+    \frac{\partial\mathcal{L}}{\partial{}w_i}=0;~~\frac{\partial\mathcal{L}}{\partial{}w_i}=0
+\end{equation}
+解出$w$和$\beta$，即是目标问题最优解。进一步地扩展约束条件，定义原始问题:
+\begin{equation}
+    \min_w~f(w)~~s.t.~~g_i(w)\leq0,i=1,...,k;~~h_i(w)=0,i=1,...,l.
+\end{equation}
+为了求解该问题，定义广义Lagrange函数:
+\begin{equation}
+    \mathcal{L}(w,\alpha,\beta)=f(w)+\sum^k_{i=1}\alpha_ig_i(w)+
+    \sum^l_{i=1}\beta_ih_i(w)
+\end{equation}
+$\alpha_i$和$\beta_i$称为Lagrange乘子。考察一个量
+\begin{equation}
+    \theta_{\mathcal{P}}(w)=\max_{\alpha,\beta:\alpha_i\geq0}
+    \mathcal{L}(w,\alpha,\beta)
+\end{equation}
+可以发现
+\begin{equation}
+    \theta_{\mathcal{P}}(w)=\left\{\begin{array}{ll}
+            f(w)&\mathrm{if~w~satisfies~primal~constraints}\\
+            \infty&\mathrm{otherwise}
+    \end{array}\right.
+\end{equation}
+当$w$满足约束条件的时候$\theta_{\mathcal{P}}(w)$和目标函数相同，否则可发散至$\infty$。
+这时，我们考察问题
+\begin{equation}
+    \min_w\theta_{\mathcal{P}}(w)=\min_w\max_{\alpha,\beta:\alpha_i\geq0}\mathcal{L}(w,\alpha,\beta)
+\end{equation}
+这和初始问题是等价的。令$p^*=\min_w\theta_{\mathcal{P}}(w)$，为初始问题的解。
+定义
+\begin{equation}
+    \theta_{\mathcal{D}}(\alpha,\beta)=\min_w\mathcal{L}(w,\alpha,\beta)
+\end{equation}
+我们可以提出对偶问题
+\begin{equation}
+    \max_{\alpha,\beta:\alpha_i\geq0}\theta_{\mathcal{D}}(\alpha,\beta)=
+    \max_{\alpha,\beta:\alpha_i\geq0}\min_w\mathcal{L}(w,\alpha,\beta)
+\end{equation}
+将对偶问题的解标记为
+$d^*=\max_{\alpha,\beta:\alpha_i\geq0}\theta_{\mathcal{D}}(w)$。可以
+发现如下关系
+\begin{equation}
+    d^*=\max_{\alpha,\beta:\alpha_i\geq0}\min_w\mathcal{L}(w,\alpha,\beta)
+    \leq\min_w\max_{\alpha,\beta:\alpha_i\geq0}\mathcal{L}(w,\alpha,\beta)=p^*
+\end{equation}
+如果在某一条件下使得
+\begin{equation}
+    d^*=p^*
+\end{equation}
+则可通过求解对偶问题来获得初始问题的解。这样做的优点在于：一者对偶问题往往更容易求解；二者
+可以自然地引入核函数，进而推广到非线性分类问题。现在来考察初始问题和对偶问题解相同的条件。
+假设约束函数$f$和$g$都是凸的，并且存在$a_i,b_i$，使得$h_i(w)=a_i^Tw+b_i$，并且存在$w$使得
+$g_i(w)<0~\forall i$，这时，可以证明必然存在$w^*,\alpha^*,\beta^*$使得$w^*$是初始问题的解，
+以及$\alpha^*,\beta^*$是对偶问题的解，且$p^*=d^*=\mathcal{L}(w^*,\alpha^*,\beta^*)$。同时，
+$w^*,\alpha^*,\beta^*$满足Karush-Kuhn-Tucker(KKT)条件：
+\begin{eqnarray}
+    \frac{\partial}{\partial{}w_i}\mathcal{L}(w^*,\alpha^*,\beta^*)&=&0,~i=1,...,n\\
+    \frac{\partial}{\partial{}\beta_i}\mathcal{L}(w^*,\alpha^*,\beta^*)&=&0,~i=1,...,l\\
+    \alpha^*g_i(w^*)&=&0,~i=1,...,k\\
+    g_i(w^*)&\leq&0,~i=1,...,k\\
+    \alpha^*&\geq&0,~i=1,...,k
+\end{eqnarray}
+反过来，如果$w^*,\alpha^*,\beta^*$满足KKT条件，则其为初始问题和对偶问题的解。
+注意到方程(4-23)，表示如果$\alpha_i>0$，则$g_i(w^*)=0$，称为KKT对偶互补条件。
+这对SVM的支持向量的数量的证明以及SMO算法的收敛性非常重要。
+
+\textbf{分类器参数最优化}
+回顾之前提出的寻求最佳间隔分类器的最优化问题：
+\begin{equation}
+    \min_{\gamma,w,b}\frac{1}{2}||w||^2~~s.t.~~y_i(\langle{}w,x_i\rangle+b)\geq1,~i=1,...,m
+\end{equation}
+可将约束条件重写为
+\begin{equation}
+    g_i(w)=-y_i(\langle{}w,x\rangle+b)+1\leq0,~i=1,...,m
+\end{equation}
+由KKT对偶互补条件，仅当某一样本的函数间隔为1时$\alpha_i>0$($g_i(w)=0$时)。
+考察图\ref{svm5}，最大间隔分类器的判决边界用实线表示。
+\pic[htbp]{最佳间隔分类器演示}{width=0.5\textwidth}{svm5}
+
+具有最小间隔的点相应地距离判决边界最近，如图\ref{svm5}中位于虚线上的3个点。
+图中仅有3个点的$\alpha_i$为非零值，称这些点为支持向量。事实上可以证明，支持向量的数量远
+小于训练集合的规模。
+
+构建最优化问题的Lagrange函数如下
+\begin{equation}
+    \mathcal{L}(w,b,\alpha)=\frac{1}{2}||w||^2-\sum^m_{i=1}\alpha_i
+    [y_i(\langle{}w,x_i\rangle+b)-1]
+\end{equation}
+$\alpha_i$为Lagrange乘子。为了求得对偶问题，需要先求$\mathcal{L}(w,b,\alpha)$
+关于$w$和$b$的最小值(固定$\alpha$)来求得$\theta_{\mathcal{D}}$。令
+\begin{equation}
+    \bigtriangledown_w\mathcal{L}(w,b,\alpha)=w-\sum^m_{i=1}\alpha_iy_ix_i=0
+\end{equation}
+可得到
+\begin{equation}
+    w=\sum^m_{i=1}\alpha_iy_ix_i
+\end{equation}
+同时令
+\begin{equation}
+    \frac{\partial}{\partial{}b}\mathcal{L}(w,b,\alpha)=\sum^m_{i=1}\alpha_iy_i=0
+\end{equation}
+代回Lagrange函数，得到
+\begin{eqnarray}
+    \mathcal{L}(w,b,\alpha)&=&\sum^m_{i=1}\alpha_i-\frac{1}{2}\sum^m_{i,j=1}
+    y_iy_j\alpha_i\alpha_j\langle{}x_i,x_j\rangle-b\sum^m_{i=1}\alpha_iy_i\\
+    {}&=&\sum^m_{i=1}\alpha_i-\frac{1}{2}\sum^m_{i,j=1}y_iy_j\alpha_i\alpha_j
+    \langle{}x_i,x_j\rangle
+\end{eqnarray}
+
+继而可求得对偶问题：
+\begin{eqnarray}
+    \max_\alpha~W(\alpha)=\sum^m_{i=1}\alpha_i-\frac{1}{2}\sum^m_{i,j=1}y_iy_j\alpha_i\alpha_j
+    \langle{}x_i,x_j\rangle\\
+    s.t.~\alpha_i\geq0,~i=1,...,m;\sum_{i=1}^m\alpha_iy_i=0
+\end{eqnarray}
+满足$p^*=d^*$需要的条件以及KKT条件，则我们可以通过求解对偶问题(SMO算法)来获得初始问题的解，
+即求得使$W(\alpha)$在约束条件下最大化的$\alpha$，然后采用方程(2-50)求得初始问题
+最优化的解$w$，然后可由
+\begin{equation}
+    b^*=-\frac{\max_{i:y_i=-1}\langle{}w*,x_i\rangle+\min_{i:y_i=1}\langle{}w*,x_i
+    \rangle}{2}
+\end{equation}
+求得参数$b$。
+回顾之前的对偶问题，能够发现计算过程只涉及到求输入特征空间中的点之间的内
+积$\langle{}x_i,x_j\rangle$，这是之后采用核函数的关键。
+
+若已将SVM在训练集合上进行训练并得到了较好的拟合效果，需要对一个输入$x$进行分类预测
+，需要计算$\langle{}w,x\rangle+b$，若是结果大于0，则输出$y=1$。由方程(2-50)，计算
+过程如下：
+\begin{eqnarray}
+    \langle{}w,x\rangle+b&=&\langle\sum^m_{i=1}\alpha_iy_ix_i,x\rangle+b\\
+    {}&=&\sum^m_{i=1}\alpha_iy_i\langle{}x_i,x\rangle+b
+\end{eqnarray}
+在$\alpha_i$已知的情况下，为了进行一次判决，只需要计算$x$与训练集合中数据点
+之间的内积即可。前面已经提到除了支持向量外$\alpha_i=0$，这可以大幅减少计算量，
+只需要计算$x$与支持向量之间的内积即可。
+
+\textbf{核函数}~~上文针对SVM处理线性可分的情况，而对于非线性的情况，SVM的处理
+方法是选择一个核函数，通过将数据映射到高维空间，来解决在原始空间中线性不可分的
+问题。SVM的训练样本总是以成对内积的形式出现，且判决函数的表达式仅与支持向量的数量
+有关，而独立于空间的维度，在处理高维输入空间的分类时，这种方法尤其有效。
+通过使用恰当的核函数来替代内积，可以隐式地将非线性的训练数据映射到高维空间，而不
+增加分类器参数规模。
+
+在通过特征提取算法获得特征向量后，SVM可以采用$\phi(x)$进行学习而不是原始特征值$x$，
+由于SVM算法的训练和分类的核心计算是求内积$\langle{}x,z\rangle$，我们可以将其替换
+为$\langle{}\phi(x),\phi(z)\rangle$。给定特征映射关系$\phi$，定义核函数
+\begin{equation}
+    K(x,z)=\langle\phi(x),\phi(z)\rangle
+\end{equation}
+
+通常$K(x,z)$的计算量会很小，甚至小于中间映射值$\phi(x),\phi(z)$的计算量(高维空间)。
+选择一种高效的$K(x,z)$计算方法，可以隐式地忽略$\phi(x),\phi(z)$的计算。例如，给出
+核函数
+\begin{equation}
+    K(x,z)=(\langle{}x,z\rangle+c)^d
+\end{equation}
+特征将被映射到$\left(\stackrel{n+d}{d}\right)$维特征空间，这很容易带来维数灾难。
+但是核函数以内积的形式在低维空间直接进行计算，而不用显式地写出映射后的结果，因而
+仍然能够在常数时间内完成。
+
+$K(x,z)$可以理解为是$\phi(x)$和$\phi(z)$之间的相似度的衡量。当$x$和$z$相似时核函数
+接近于1，而当$x$和$z$正交时核函数接近于0。构造有效的核函数，成为接下来要解决的问题。
+给定有限训练集合$\{x_1,...,x_m\}$，定义核函数矩阵为$m\times{}m$矩阵$K$，
+$K_{ij}=K(x_i,x_j)$，这里不加证明地给出Mercer定理：
+\begin{dingli}
+    如果函数$K$是$\mathbb{R}^n\times\mathbb{R}^n\to\mathbb{R}$上的映射，那么如果$K$
+    是一个有效核函数的充要条件是对于训练样本$\{x_1,...,x_m\}$，其相应的核函数矩阵是
+    半正定的。
+\end{dingli}
+
+同时，列举出一些常用的有效核函数模型：
+\begin{enumerate}
+    \item[$\bullet$] 线性核函数：$K(x_i,x_j)=\langle{}x_i,x_j\rangle$
+    \item[$\bullet$] 多项式核函数: $K(x_i,x_j)=(\langle{}x_i,x_j\rangle+1)^d$
+    \item[$\bullet$] 径向基核函数: $K(x_i,x_j)=exp(-\frac{||x_i-x_j||^2}{\sigma^2})$
+    \item[$\bullet$] S型核函数: $K(x_i,x_j)=tanh(\beta\langle{}x_i,x_j\rangle+r)$
+\end{enumerate}
+
+\textbf{松弛变量}~~
+如图\ref{svm6}所示的线性可分样本，
+\pic[htbp]{个别扰动对性能的影响}{width=0.6\textwidth}{svm6}
+当加入一个扰动的样本后(称为离群点)，因为判定边界本身只有少数几个支持向量组成，离群点会
+造成分类器间隔明显缩小。
+虽然通过映射将低维线性不可分问题变为高维的线性可分问题，但是映射到高维空间后仍然可能存在
+离群点。这几乎难以避免，因为随着数据规模增大，样本数据本身由于随机性
+造成的偏差的扰动会变得明显。这种情况需要引入松弛变量$\xi_i(i=1,...,m)$，对于分类任务，
+不要求每个样本都分类正确，允许存在误差。将最优化问题重写为
+\begin{eqnarray}
+    min_{\gamma,w,b}\frac{1}{2}||w||^2+C\sum^m_{i=1}\xi_i\\
+    s.t.~~y_i(\langle{}w,x_i\rangle+b)\geq1-\xi_i,~i=1,...,m\\
+    \xi_i\geq0,~i=1,...,m
+\end{eqnarray}
+这样，允许样本的函数间隔小于1，若一个样本的函数间隔$1-\xi_i$，我们需要通过给目标函数
+增加$C\xi_i$来补偿离群扰动。惩罚因子$C$的作用是在寻找最优间隔超平面和数据点偏差量最小
+之间权衡，表征对离群点的重视程度。
+
+这时Lagrange函数为：
+\begin{equation}
+    \mathcal{L}(w,b,\xi,\alpha,r)=\frac{1}{2}||w||^2+C\sum^m_{i=1}\xi_i-
+    \sum^m_{i=1}\alpha_i[y_i(x^Tw+b)-1+\xi_i]-\sum^m_{i=1}r_i\xi_i
+\end{equation}
+$\alpha_i$和$r_i$是Lagrange乘子。可得到对偶问题：
+\begin{eqnarray}
+    \max_\alpha~~W(\alpha)=\sum^m_{i=1}\alpha_i-\frac{1}{2}\sum^m_{i,j=1}
+    y_iy_j\alpha_i\alpha_j\langle{}x_i,x_j\rangle\\
+    s.t.~~0\leq\alpha_i\leq{}C,~~i=1,...,m\\
+    \sum^m_{i=1}\alpha_iy_i=0
+\end{eqnarray}
+KKT对偶互补条件为：
+\begin{eqnarray}
+    \alpha_i=0&\Rightarrow&y_i(\langle{}w,x_i\rangle+b)\geq1\\
+    \alpha_i=C&\Rightarrow&y_i(\langle{}w,x_i\rangle+b)\leq1\\
+    0<\alpha_i<C&\Rightarrow&y_i(\langle{}w,x_i\rangle+b)=1
+\end{eqnarray}
+
+剩下的问题就是如何求解对偶问题，需要引入序列最小最优化(SMO)算法。
+
+\textbf{SMO算法}~~
+Platt在1998年提出SMO算法\cite{SMO}，很快成为最快的二次规划优化算法，特别针对线性SVM和
+稀疏数据时性能更优。对$\alpha_i$进行优化的过程中，注意到$\alpha_i$满足约束条件(2-67)，
+假设固定$\alpha_2,...,\alpha_m$，对$\alpha_1$进行优化，这实际上是不可行的，因为一旦更新
+$\alpha_1$，约束条件(2-67)则不满足了，因为
+\begin{equation}
+    \alpha_1=-y_1\sum^m_{i=2}\alpha_iy_i
+\end{equation}
+即$\alpha_1$由$\alpha_2,...,\alpha_m$唯一确定。如果要对$\alpha_i$进行优化，至少要对两个
+参数同时进行优化以满足约束条件。出于这种动机，SMO算法按照如下流程迭代至收敛：
+\begin{enumerate}
+    \item 采用启发式算法选择需要更新的一对$(\alpha_i,\alpha_j)$，使目标函数在该轮迭代
+        能得到最大性能提升
+    \item 对$(\alpha_i,\alpha_j)$进行优化，保持其他所有的$\alpha_k(k\neq{}i,j)$不变
+\end{enumerate}
+
+为了测试SMO算法的收敛性，可以在收敛容限时间(TOL)下测试KKT条件是否满足，TOL通常设置
+在$(0.001,0.01)$之间\cite{SMO}。SMO算法的高效性在于每次更新$(\alpha_i,\alpha_j)$可以高效地进行。
+假设固定$\alpha_3,...,\alpha_m$，在一次迭代中需要对$(\alpha_1,\alpha_2)$进行优化，
+有如下约束关系：
+\begin{equation}
+    \alpha_1y_1+\alpha_2y_2=-\sum^m_{i=3}\alpha_iy_i=\zeta
+\end{equation}
+可视化表示为：
+\pic[htbp]{每一轮的迭代约束}{width=0.5\textwidth}{svm7}
+从图\ref{svm7}中容易发现$\alpha_1$和$\alpha_2$必然被限定在$[0,C]\times[0,C]$框中，同时也被限定
+在直线$\alpha_1y_1+\alpha_2y_2=\zeta$上，并且$L\leq\alpha_2\leq{}H$，否则
+$(\alpha_1,\alpha_2)$不能同时满足框限定和线限定。在示例中$L=0$，实际中$L,H$根据
+$\alpha_1y_1+\alpha_2y_2=\zeta$表示的限定而不同。我们可以将$\alpha_1$表示为$\alpha_2$
+的函数：
+\begin{equation}
+    \alpha_1=(\zeta-\alpha_2y_2)y_1
+\end{equation}
+重写目标函数为：
+\begin{equation}
+    W(\alpha_1,\alpha_2,...,\alpha_m)=W((\zeta-\alpha_2y_2)y_1,\alpha_2,...,\alpha_m)
+\end{equation}
+在固定$\alpha_3,...,\alpha_m$的情况下，这实际上是一个关于$\alpha_2$的凸函数。在忽略
+边界框限定的情况下可以通过求偏微分进行凸优化，得到$\alpha_2$优化后的值，
+用$\alpha_2^{new,unclipped}$表示，然后根据$[L,H]$进行截取：
+\begin{equation}
+    \alpha_2^{new}=\left\{\begin{array}{ll}
+            H&if~~\alpha_2^{new,unclipped}>H\\
+            \alpha_2^{new,unclipped}&if~~L\leq\alpha_2^{new,unclipped}\leq{}H\\
+            L&if~~\alpha_2^{new,unclipped}<L
+        \end{array}\right.
+\end{equation}
+求得了$\alpha_2^{new}$后，可代回求得$\alpha_1^{new}$。
+
+本章介绍了人体检测系统的代表性架构即其基本组件的基本理论，下一章将对行为分析方面的理论进行介绍。

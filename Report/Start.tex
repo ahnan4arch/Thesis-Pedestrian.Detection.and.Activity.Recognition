@@ -1,0 +1,62 @@
+
+%========================================================================
+%   FileName: monocularpedestrian.tex
+%     Author: GuanHWang
+%      Email: GuanHWang2011@gmail.com
+% LastChange: 2014-02-28 14:04:48
+%========================================================================
+\documentclass[12pt]{article}
+\usepackage{fontspec}
+\setmainfont[Mapping=tex-text]{Times New Roman}
+\usepackage[CJKchecksingle,CJKnumber]{xeCJK}
+\setCJKmainfont[BoldFont={SimHei},
+ItalicFont={KaiTi}]{SimSun}
+\renewcommand\baselinestretch{1.2}
+\usepackage{graphicx}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{listings}
+\lstset{numbers=left,numbersep=4pt,
+frame=lines,framerule=1pt,basicstyle=\ttfamily\scriptsize,
+}
+\usepackage[bookmarksnumbered, pdfencoding=auto, 
+breaklinks, colorlinks, linkcolor=red, urlcolor=ForestGreen, citecolor=magenta]{hyperref}
+\usepackage{cite}
+\usepackage{stfloats}
+\usepackage{amssymb}
+\punctstyle{plain}
+\begin{document}
+%\begin{CJK}{UTF8}{hei}
+\title{毕业设计开题报告表~附页\\学位论文研究内容}
+\author{}
+\date{}
+\maketitle
+\section{选题依据及意义}
+人体检测及行为分析是机器视觉领域的热点课题之一，也是诸多重要应用的一项关键环节，在智能汽车，监控系统和高级机器人等方面具有关键性应用。此毕业设计对人体检测和行为分析进行方法论和实验学角度的研究，通过提供一个通用的基准参考点来提高性能评估的可视化程度。同时，针对一些算法的不足，做出一些改进，主要针对接近于实时处理条件的测试情景进行优化。
+\section{研究现状及发展态势}
+行人检测和行为分析在过去数年内吸引了相当数量的来自计算机视觉社区的兴趣，许多技术理论以特征，模型和泛型架构的形式被提出，然而在实验方面情况并不是这么乐观，各类报告中提及的性能往往相差几个数量级。这源于采用的图像数据的类型差异(背景变化程度)，测试数据集的有限大小，以及不同的评估标准。同时，采用综述文献建议的戴姆勒公司提供的泛数据集进行实验条件下的测试得到的性能仍与实际要求的性能相差3个数量级，这说明在这项复杂但是重要的问题上还需要很多未来的努力。
+\section{课题研究内容}
+课题研究的内容主要包括人体检测和行为分析两部分。需要研究的人体检测架构包括：基于Haar小波特征的AdaBoost级联器，HOG/linSVM，NN/LRF，联合形状-纹理检测器。需要研究的行为分析内容包括行为描述和行为分析两部分。
+\section{关键问题和最终目标}
+\subsection{关键问题}
+\begin{enumerate}
+\item[$\bullet$]
+阅读综述文献了解典型架构并翻译
+\item[$\bullet$]
+典型技术的程序实现
+\item[$\bullet$]
+程序实现在预处理方面的改进
+\item[$\bullet$]
+技术笔记的撰写，整理以及论文写作
+\end{enumerate}
+\subsection{最终目标}
+对行人检测和行为分析的典型技术架构有基础的理解，并选择合适的算法进行仿真，完成性能测试，并设计改善算法性能的预处理模块。然后将所有的工作形成代码集合和论文。
+\section{主要理论，技术路线和实施方案}
+\subsection{主要理论}
+行人检测系统目前具有代表性的底层模型主要有：基于Haar小波特征的AdaBoost级联器，HOG/linSVM,NN/LRF和联合形状-纹理检测器。文献表明基于Haar小波特征的AdaBoost级联器在较低的图像分辨率和接近于实时处理速度的条件下的优势以及HOG/linSVM在高图像分辨率和低处理速度条件下的明显优势。但是,由于各类文献采用不同的测试标准获取的性能指标往往差异过大，这就需要通过提供一个基准参考点来进行各项具有代表性的技术之间的性能对比测评。同时，与设定智能汽车城市环境行驶车载性能指标相比还存在巨大的性能差异(处理速度和准确率方面)。处理速度可以通过图像预处理来得到明显改善，准确率则需要通过时域整合或是整合场景先验知识来得到改善。
+
+行为分析涉及到行为描述和分析方法。行为描述方法可分为两类:一是基于底层的图像信息方法；二是基于高层人体结构的方法。基于底层图像信息的方法可以快速鲁棒地获取特征，但是一般只能描述简单的行为。基于高层的人体结构的方法可以更精细地描述行为，但是特征获取比较困难，往往要依赖于人体姿势估计的准确性。行为识别算法也可以分为两类：一是基于模板匹配的算法，而是基于状态空间的算法。基于模板匹配的算法计算量少，但是对行为时间间隔敏感；基于状态空间的算法可以避免行为时间间隔建模的问题，但是模型训练复杂。行为描述主要的问题是视角和遮挡问题，目前的较流行的解决方案是多视角整合，但超过了毕业设计单眼视觉的范围。行为分析设计到的高层次理解问题依然还有很多要解决的问题。
+\subsection{技术路线和实施方案}
+首先阅读该领域具有代表性的文章，对典型架构有一个基础的了解。然后参考社区文档，记录技术笔记，采用OpenCV开源视觉运算库，实现具有代表性的算法，进行原始程序仿真，然后针对某些不足，对算法进行一些改进。最终整理前期的技术笔记和程序代码，形成论文。
+\section{论文特色和创新点}
+论文特色是符合机器视觉当前的热点应用场合，对深入理解此类应用场合的典型技术手段和存在的不足有很大帮助，有利于未来的研究兴趣的进一步拓展和深入。同时，针对算法的不足，从预处理的角度来尝试改善算法的性能，是论文的创新点。
+\end{document}

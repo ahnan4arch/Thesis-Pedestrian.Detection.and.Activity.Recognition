@@ -1,0 +1,132 @@
+\chapter{Monocular Pedestrian Detection:Survey and Experiments}
+\begin{center}
+    Markus Enzweiler,Dariu M. Gavrila\footnote{文献引用标号以原文为准。}
+\end{center}
+\begin{center}
+    \textbf{Abstract}
+\end{center}
+
+Pedestrian detection is a rapidly evolving area in computer vision with key applications in intelligent vehicles, surveillance,
+and advanced robotics. The objective of this paper is to provide an overview of the current state of the art from both methodological
+and experimental perspectives. The first part of the paper consists of a survey. We cover the main components of a pedestrian
+detection system and the underlying models. The second (and larger) part of the paper contains a corresponding experimental study.
+We consider a diverse set of state-of-the-art systems: wavelet-based AdaBoost cascade , HOG/linSVM , NN/LRF , and
+combined shape-texture detection . Experiments are performed on an extensive data set captured onboard a vehicle driving
+through urban environment. The data set includes many thousands of training samples as well as a 27-minute test sequence involving
+more than 20,000 images with annotated pedestrian locations. We consider a generic evaluation setting and one specific to pedestrian
+detection onboard a vehicle. Results indicate a clear advantage of HOG/linSVM at higher image resolutions and lower processing
+speeds, and a superiority of the wavelet-based AdaBoost cascade approach at lower image resolutions and (near) real-time
+processing speeds. The data set (8.5 GB) is made public for benchmarking purposes.
+\section{Introduction}
+Finding 
+people in images is a key ability for a variety of
+important applications. In this paper, we are concerned
+with those applications where the human body to be
+detected covers a smaller portion of the image, i.e., is visible
+at lower resolution. This covers outdoor settings such as
+surveillance, where a camera is watching down onto a
+street, or intelligent vehicles, where an onboard camera
+watches the road ahead of possible collisions with pedes-
+trians. It also applies to indoor settings such as a robot
+detecting a human walking down the hall. Hence our use of
+the term “pedestrian” in the remainder of the paper, rather
+than the more general “people” or “person.” We do not
+consider more detailed perception tasks such as human
+pose recovery or activity recognition.
+
+Pedestrian detection is a difficult task from a machine
+vision perspective. The lack of explicit models leads to the
+use of machine learning techniques, where an implicit
+representation is learned from examples. As such, it is an
+instantiation of the multiclass object categorization problem
+(e.g., [79]). Yet the pedestrian detection task has some of its
+own characteristics, which can influence the methods of
+choice. Foremost, there is the wide range of possible
+pedestrian appearance, due to changing articulated pose,
+clothing, lighting, and background. The detection compo-
+nent is typically part of a system situated in a physical
+environment, which means that prior scene knowledge
+(camera calibration, ground plane constraint) is often
+available to improve performance. Comparatively large
+efforts have been spent to collect extensive databases; this
+study, for example, benefits from the availability of many
+thousands of samples. On the other hand, the bar regarding
+performance and processing speed lies much higher, as we
+will see later.
+
+Pedestrian detection has attracted an extensive amount of
+interest from the computer vision community over the past
+few years. Many techniques have been proposed in terms of
+features, models, and general architectures. The picture is
+increasingly blurred on the experimental side. Reported
+performances differ by up to several orders of magnitude
+(e.g., within the same study [74] or [39] versus [74]). This
+stems from the different types of image data used (degree of
+background change), the limited size of the test data sets, and
+the different (often, not fully specified) evaluation criteria
+such as localization tolerance, coverage area, etc.
+
+This paper aims to increase visibility by providing a
+common point of reference from both methodological and
+experimental perspectives. To that effect, the first part of the
+paper consists of a survey, covering the main components of a
+pedestrian detection system: hypothesis generation (ROI
+selection), classification (model matching), and tracking.
+
+The second part of the paper contains a corresponding
+experimental study. We evaluate a diverse set of state-of-the-
+art systems with identical test criteria and data sets as follows:
+\begin{enumerate}
+\item[$\bullet$] Haar wavelet-based AdaBoost cascade;
+\item[$\bullet$] histogram of oriented gradient(HOG) features combined with a linear SVM;
+\item[$\bullet$] neural network using local receptive fields; and
+\item[$\bullet$] combined hierarchical shape matching and texture-based NN/LRF classification
+\end{enumerate}
+
+In terms of evaluation, we consider both a generic and an
+application-specific test scenario. The generic test scenario
+is meant to evaluate the inherent potential of a pedestrian
+detection method. It incorporates no prior scene knowledge
+as it uses a simple 2D bounding box overlap criterion for
+matching. Furthermore, it places no constraints on allow-
+able processing times (apart from practical feasibility). The
+application-specific test scenario focuses on the case of
+pedestrian detection from a moving vehicle, where knowl-
+edge about camera calibration, location of the ground plane,
+and sensible sensor coverage areas provide regions of
+interest. Evaluation takes place in 3D in a coordinate system
+relative to the vehicle. Furthermore, we place upper bounds
+on allowable processing times (250 ms versus 2.5 s per
+frame). In both scenarios, we list detection performance
+both at the frame and trajectory levels.
+
+The data set is truly large-scale; it includes many tens of
+thousands of training samples as well as a test sequence
+consisting of 21,790 monocular images at 640 Â 480 resolu-
+tion, captured from a vehicle in a 27-minute drive through
+urban traffic. See Table 1. Compared to previous pedestrian
+data sets, the availability of sequential images means that
+also hypothesis generation and tracking components of
+pedestrian systems can be evaluated, unlike with [28], [46],
+[49]. Furthermore, the data set excels in complexity
+(dynamically changing background) and realism for the
+pedestrian protection application onboard vehicles.
+
+The scope of this paper is significantly broader than our
+previous experimental study [49], which focused on
+pedestrian classification using low-resolution pedestrian
+and nonpedestrian cutouts ($18\times36$ pixels). Here, we
+evaluate how robust and efficient pedestrians can be
+localized in image sequences in both generic and applica-
+tion-specific (vehicle) settings. Among the approaches
+considered, we include those that rely on coarse-to-fine
+image search strategies, e.g., see Section 4.4.
+
+The remainder of this paper is organized as follows:
+Section 2 surveys the field of monocular pedestrian detection.
+After introducing our benchmark data set in Section 3,
+Section 4 describes the approaches selected for experimental
+evaluation. The result of the generic evaluation and the
+application-specific pedestrian detection from a moving
+vehicle are listed in Section 5. After discussing our results
+in Section 6, we conclude the paper in Section 7.
